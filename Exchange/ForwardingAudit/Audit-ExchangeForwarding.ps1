@@ -97,7 +97,7 @@ foreach($mb in $scanList){
     if($mb.ForwardingAddress){Finding $mb 'Mailbox.ForwardingAddress' ([string]$mb.ForwardingAddress) 'Enabled' '' '' $keep}
     if($mb.ForwardingSmtpAddress){Finding $mb 'Mailbox.ForwardingSmtpAddress' ([string]$mb.ForwardingSmtpAddress) 'Enabled' '' '' $keep}
     try{
-      $rules=@(Get-InboxRule -Mailbox ([string]$mb.Identity) -IncludeHidden -ResultSize Unlimited -ErrorAction Stop)
+      $rules=@(Get-InboxRule -Mailbox ([string]$mb.Identity) -IncludeHidden -ErrorAction Stop)
       foreach($rule in $rules){
         $status=if($rule.Enabled){'Enabled'}else{'Disabled'}
         foreach($action in @('ForwardTo','RedirectTo','ForwardAsAttachmentTo')){
@@ -157,11 +157,11 @@ if(-not $NoEmail -and $cfg.Email -and $cfg.Email.Enabled){
     if(!$mail.To.Count){throw 'No email recipients.'}
     $mail.Subject="Exchange forwarding audit ($mode): $state - $stamp"
     $mail.Body="Scanned: $scanned; mailboxes with forwarding: $unique; entries: $($rows.Count); errors: $($problems.Count). See attached reports."
-    $mail.Attachments.Add((New-Object Net.Mail.Attachment (Join-Path $folder "Forwarding_$stamp.html")))
-    $mail.Attachments.Add((New-Object Net.Mail.Attachment $csv))
-    $mail.Attachments.Add((New-Object Net.Mail.Attachment (Join-Path $folder "Summary_$stamp.json")))
-    if($problems.Count){$mail.Attachments.Add((New-Object Net.Mail.Attachment (Join-Path $folder "Errors_$stamp.csv")))}
-    $smtp=New-Object Net.Mail.SmtpClient([string]$ec.Host,[int]$ec.Port)
+    $mail.Attachments.Add(([System.Net.Mail.Attachment]::new((Join-Path $folder "Forwarding_$stamp.html"))))
+    $mail.Attachments.Add(([System.Net.Mail.Attachment]::new($csv)))
+    $mail.Attachments.Add(([System.Net.Mail.Attachment]::new((Join-Path $folder "Summary_$stamp.json"))))
+    if($problems.Count){$mail.Attachments.Add(([System.Net.Mail.Attachment]::new((Join-Path $folder "Errors_$stamp.csv"))))}
+    $smtp=[System.Net.Mail.SmtpClient]::new([string]$ec.Host,[int]$ec.Port)
     $smtp.EnableSsl=$true
     $smtp.UseDefaultCredentials=$false
     $smtp.Credentials=$credential.GetNetworkCredential()
