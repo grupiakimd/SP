@@ -1,5 +1,12 @@
 # Historia wersji
 
+## v2.2.1 — nocny harmonogram (2026-10-13)
+
+- Folder `v2.2/scheduler/` z gotowym skryptem nocnym i instalatorem Task Scheduler.
+- Jednorazowe uruchomienie o najbliższej 22:00, limit pracy 8 godzin i ochrona przed równoległym skanem.
+- Logi i walidacja wygenerowanych HTML, JSON, MD; exit code 2 dla audytu częściowego.
+- Hasło konta zadania pobierane lokalnie, nieobecne w repozytorium.
+
 ## v2.2.1 — 2026-10-13 (poprawka)
 
 - Naprawa konfliktu funkcji `R` z aliasem `Invoke-History` w Windows PowerShell 5.1.
