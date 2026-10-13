@@ -38,13 +38,21 @@ if($PSBoundParameters.ContainsKey('Mailboxes')){$selected=@($Mailboxes | Where-O
 elseif($mode -eq 'Test'){$selected=@($cfg.TestMailboxes | Where-Object {$_ -and $_.Trim()} | Select-Object -Unique)}
 if($mode -eq 'Test' -and $selected.Count -eq 0){throw 'Test mode requires Mailboxes parameter or TestMailboxes in config.'}
 if($mode -eq 'Test' -and $dbs.Count -eq 0){throw 'Test mode requires at least one allowed database.'}
+# Remote Exchange PowerShell from any domain-joined Windows host (PowerShell 5.1).
+# Current task identity is used with Kerberos; no Exchange installation is required.
+$exchangeSession=$null
 if(!(Get-Command Get-Mailbox -ErrorAction SilentlyContinue)){
-  $install=[Environment]::GetEnvironmentVariable('ExchangeInstallPath')
-  if(!$install){throw 'Run on an Exchange server with Exchange Management Tools (ExchangeInstallPath missing).'}
-  $bootstrap=Join-Path $install 'bin\RemoteExchange.ps1'
-  if(!(Test-Path $bootstrap)){throw "Exchange bootstrap missing: $bootstrap"}
-  . $bootstrap
-  Connect-ExchangeServer -Auto -ErrorAction Stop | Out-Null
+  $hostName=[string]$cfg.ExchangeServer
+  if([string]::IsNullOrWhiteSpace($hostName)){throw 'Set ExchangeServer to the Exchange FQDN in config.json.'}
+  if($hostName -notmatch '^[a-zA-Z0-9][a-zA-Z0-9.-]*$'){throw 'ExchangeServer must be a server DNS name, not a URL.'}
+  $uri="http://$hostName/PowerShell/"
+  try {
+    $exchangeSession=New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri $uri -Authentication Kerberos -ErrorAction Stop
+    $null=Import-PSSession $exchangeSession -DisableNameChecking -AllowClobber -ErrorAction Stop
+  } catch {
+    if($exchangeSession){Remove-PSSession $exchangeSession -ErrorAction SilentlyContinue}
+    throw "Exchange remote PowerShell connection failed ($uri): $($_.Exception.Message)"
+  }
 }
 foreach($command in 'Get-Mailbox','Get-InboxRule','Get-MailboxDatabase'){
   if(!(Get-Command $command -ErrorAction SilentlyContinue)){throw "Missing cmdlet: $command"}
@@ -165,5 +173,6 @@ if($cfg.Email -and $cfg.Email.Enabled){
     if($smtp){$smtp.Dispose()}
   }
 }
+if($exchangeSession){Remove-PSSession $exchangeSession -ErrorAction SilentlyContinue}
 if($problems.Count){exit 2}
 exit 0
