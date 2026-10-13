@@ -71,7 +71,7 @@ function F($r,[string]$key) {
     if($null -ne $p){return $p.Value}
     return $null
 }
-function R([string]$name){if($D.ContainsKey($name)){return @($D[$name])};return @()}
+function Get-AuditSectionRows([string]$name){if($D.ContainsKey($name)){return @($D[$name])};return @()}
 $map=@{}
 function Alias([string]$type,$v) {
     $s=([string]$v).Trim().ToLowerInvariant()
@@ -144,11 +144,17 @@ function Tbl([string]$title,[string[]]$head,[object[]]$arr,[int]$total){
     if($arr.Count -eq 0){[void]$script:md.Add('_Brak danych lub etap nie byl uruchomiony._');[void]$script:md.Add('');return}
     [void]$script:md.Add((TxtRow $head))
     [void]$script:md.Add((TxtRow @($head|ForEach-Object{'---'})))
-    foreach($line in $arr){[void]$script:md.Add((TxtRow $line))}
+    foreach($line in $arr){[void]$script:md.Add([string]$line)}
     if($total -gt $arr.Count){[void]$script:md.Add(('_Pominieto {0} wierszy wskutek limitu; liczby zbiorcze obejmuja calosc._' -f ($total-$arr.Count)))}
     [void]$script:md.Add('')
 }
-function First($a){return @($a|Select-Object -First $MaxRowsPerSection)}
+# Generate table lines before passing between PowerShell functions.
+# Strings are intentionally used instead of nested arrays, which PowerShell pipelines may flatten.
+function Get-AuditTableLines([object[]]$Rows) {
+    foreach ($record in @($Rows | Select-Object -Get-AuditTableLines $MaxRowsPerSection)) {
+        Write-Output (TxtRow ([object[]]$record))
+    }
+}
 $md=New-Object 'System.Collections.Generic.List[string]'
 [void]$md.Add('# SharePoint 2019 -> SE — raport pseudonimizowany')
 [void]$md.Add('')
@@ -162,8 +168,8 @@ $md=New-Object 'System.Collections.Generic.List[string]'
 [void]$md.Add('')
 [void]$md.Add('## Stan zebrania danych')
 $summary=@()
-foreach($name in $names){$summary+= , @($name,@(R $name).Count)}
-Tbl 'Sekcje i liczba rekordow' @('Sekcja','Rekordy') (First $summary) $summary.Count
+foreach($name in $names){$summary+= , @($name,@(Get-AuditSectionRows $name).Count)}
+Tbl 'Sekcje i liczba rekordow' @('Sekcja','Rekordy') (Get-AuditTableLines $summary) $summary.Count
 [void]$md.Add('## Ryzyka migracyjne')
 $codes=@('CONTENT_DB_UPGRADE','RBS','SITE_LIMIT','SP_DATABASE_UPGRADE_PENDING','SP_DATABASE_BUILD_TOO_OLD','REMOVED_SERVICE','INFOPATH','CUSTOM_WSP','TIMER_FAILURE','DEEP_SCAN_TRUNCATED','LEGACY_WORKFLOWS','WORKFLOW_NOT_SCANNED','OS_NOT_REACHABLE','CERT_EXPIRY','LARGE_DATABASE_300GB','SQL_DB_NOT_ONLINE','FILESTREAM','FULL_BACKUP_NOT_IN_MSDB','FULL_BACKUP_OLD','SQL_NOT_AUDITED','C2WTS','CLASSIC_AUTH','BASIC_AUTH','SP2019_SUPPORT_ENDED','SP_PATCH_MISMATCH','MANUAL_DEPENDENCIES','SE_TEST_REQUIRED')
 $list=@()
@@ -172,64 +178,64 @@ foreach($r in $risk){
     if($c -cnotin $codes){$c='OTHER_RISK'}
     $list+= , @((E (F $r 'Priority') @('HIGH','MEDIUM','LOW','UNKNOWN')),$c)
 }
-Tbl 'Kody ryzyk (bez surowych opisow i obiektow)' @('Waga','Kod') (First $list) $list.Count
+Tbl 'Kody ryzyk (bez surowych opisow i obiektow)' @('Waga','Kod') (Get-AuditTableLines $list) $list.Count
 [void]$md.Add('## Infrastruktura')
-$a=@(R 'FarmServers');$t=@()
-foreach($r in (First $a)){$t+= , @((Alias 'SERVER' (F $r 'Name')),(Role (F $r 'Role')),(Status (F $r 'Status')),(V (F $r 'BuildVersion')))}
+$a=@(Get-AuditSectionRows 'FarmServers');$t=@()
+foreach($r in (Get-AuditTableLines $a)){$t+= , @((Alias 'SERVER' (F $r 'Name')),(Role (F $r 'Role')),(Status (F $r 'Status')),(V (F $r 'BuildVersion')))}
 Tbl 'Farm Servers' @('Serwer','MinRole','Status','Build') $t $a.Count
-$a=@(R 'OSInventory');$t=@()
-foreach($r in (First $a)){$t+= , @((Alias 'SERVER' (F $r 'Computer')),(OsFamily (F $r 'OS')),(N (F $r 'PhysicalRAM_GB')),(N (F $r 'LogicalCPU')))}
+$a=@(Get-AuditSectionRows 'OSInventory');$t=@()
+foreach($r in (Get-AuditTableLines $a)){$t+= , @((Alias 'SERVER' (F $r 'Computer')),(OsFamily (F $r 'OS')),(N (F $r 'PhysicalRAM_GB')),(N (F $r 'LogicalCPU')))}
 Tbl 'OS i parametry VM' @('Serwer','OS','RAM GB','CPU logical') $t $a.Count
-$a=@(R 'ServerDisks');$t=@()
-foreach($r in (First $a)){$t+= , @((Alias 'SERVER' (F $r 'Computer')),(N (F $r 'CapacityGB')),(N (F $r 'FreeGB')),(N (F $r 'FreePct')))}
+$a=@(Get-AuditSectionRows 'ServerDisks');$t=@()
+foreach($r in (Get-AuditTableLines $a)){$t+= , @((Alias 'SERVER' (F $r 'Computer')),(N (F $r 'CapacityGB')),(N (F $r 'FreeGB')),(N (F $r 'FreePct')))}
 Tbl 'Dyski (bez liter)' @('Serwer','Capacity GB','Free GB','Free %') $t $a.Count
-$a=@(R 'SPBinaryVersions');$t=@()
-foreach($r in (First $a)){$t+= , @((Alias 'SERVER' (F $r 'Computer')),(V (F $r 'FileVersion')))}
+$a=@(Get-AuditSectionRows 'SPBinaryVersions');$t=@()
+foreach($r in (Get-AuditTableLines $a)){$t+= , @((Alias 'SERVER' (F $r 'Computer')),(V (F $r 'FileVersion')))}
 Tbl 'Binaria SharePoint' @('Serwer','Build') $t $a.Count
 [void]$md.Add('## SharePoint i SQL')
-$a=@(R 'WebApplications');$t=@()
-foreach($r in (First $a)){$t+= , @((Alias 'WEBAPP' (F $r 'Url')),(B (F $r 'UseClaimsAuthentication')),(B (F $r 'AllowAnonymous')),(N (F $r 'ContentDatabaseCount')))}
+$a=@(Get-AuditSectionRows 'WebApplications');$t=@()
+foreach($r in (Get-AuditTableLines $a)){$t+= , @((Alias 'WEBAPP' (F $r 'Url')),(B (F $r 'UseClaimsAuthentication')),(B (F $r 'AllowAnonymous')),(N (F $r 'ContentDatabaseCount')))}
 Tbl 'Web Applications' @('Web App','Claims','Anonymous','Bazy') $t $a.Count
-$a=@(R 'ContentDatabases');$t=@()
-foreach($r in (First $a)){$t+= , @((Alias 'DB' (F $r 'Name')),(Alias 'SERVER' (F $r 'SqlServer')),(Alias 'WEBAPP' (F $r 'WebApplication')),(N (F $r 'SiteCollections')),(N (F $r 'MaximumSiteCount')),(B (F $r 'NeedsUpgrade')),(B (F $r 'RBS_Enabled')),(V (F $r 'BuildVersion')))}
+$a=@(Get-AuditSectionRows 'ContentDatabases');$t=@()
+foreach($r in (Get-AuditTableLines $a)){$t+= , @((Alias 'DB' (F $r 'Name')),(Alias 'SERVER' (F $r 'SqlServer')),(Alias 'WEBAPP' (F $r 'WebApplication')),(N (F $r 'SiteCollections')),(N (F $r 'MaximumSiteCount')),(B (F $r 'NeedsUpgrade')),(B (F $r 'RBS_Enabled')),(V (F $r 'BuildVersion')))}
 Tbl 'Content Databases' @('DB','SQL node','Web App','Sites','Max','Upgrade','RBS','Build') $t $a.Count
-$a=@(R 'SPDatabases');$t=@()
-foreach($r in (First $a)){$t+= , @((Alias 'DB' (F $r 'Name')),(Alias 'SERVER' (F $r 'SqlServer')),(Kind (F $r 'Type')),(B (F $r 'NeedsUpgrade')),(V (F $r 'BuildVersion')))}
+$a=@(Get-AuditSectionRows 'SPDatabases');$t=@()
+foreach($r in (Get-AuditTableLines $a)){$t+= , @((Alias 'DB' (F $r 'Name')),(Alias 'SERVER' (F $r 'SqlServer')),(Kind (F $r 'Type')),(B (F $r 'NeedsUpgrade')),(V (F $r 'BuildVersion')))}
 Tbl 'SP Databases' @('DB','SQL node','Typ','Upgrade','Build') $t $a.Count
-$a=@(R 'SQLInstances');$t=@()
-foreach($r in (First $a)){$t+= , @((Alias 'SQL' (F $r 'ConnectionName')),(Alias 'SERVER' (F $r 'ServerName')),(V (F $r 'ProductVersion')),(B (F $r 'HADR')),(B (F $r 'Clustered')))}
+$a=@(Get-AuditSectionRows 'SQLInstances');$t=@()
+foreach($r in (Get-AuditTableLines $a)){$t+= , @((Alias 'SQL' (F $r 'ConnectionName')),(Alias 'SERVER' (F $r 'ServerName')),(V (F $r 'ProductVersion')),(B (F $r 'HADR')),(B (F $r 'Clustered')))}
 Tbl 'SQL Instances' @('Instancja','Serwer','Build','HADR','Cluster') $t $a.Count
-$a=@(R 'SQLDatabases');$t=@()
-foreach($r in (First $a)){$t+= , @((Alias 'DB' (F $r 'Name')),(Alias 'SQL' (F $r 'SQLInstance')),(B (F $r 'IsSharePointDB')),(E (F $r 'State') @('ONLINE','OFFLINE','RESTORING','RECOVERING','RECOVERY_PENDING','SUSPECT','EMERGENCY')),(E (F $r 'RecoveryModel') @('FULL','SIMPLE','BULK_LOGGED')),(N (F $r 'CompatibilityLevel')),(N (F $r 'DataAllocatedMB')),(N (F $r 'LogAllocatedMB')),(N (F $r 'TotalAllocatedMB')),(N (F $r 'FileStreamFiles')))}
+$a=@(Get-AuditSectionRows 'SQLDatabases');$t=@()
+foreach($r in (Get-AuditTableLines $a)){$t+= , @((Alias 'DB' (F $r 'Name')),(Alias 'SQL' (F $r 'SQLInstance')),(B (F $r 'IsSharePointDB')),(E (F $r 'State') @('ONLINE','OFFLINE','RESTORING','RECOVERING','RECOVERY_PENDING','SUSPECT','EMERGENCY')),(E (F $r 'RecoveryModel') @('FULL','SIMPLE','BULK_LOGGED')),(N (F $r 'CompatibilityLevel')),(N (F $r 'DataAllocatedMB')),(N (F $r 'LogAllocatedMB')),(N (F $r 'TotalAllocatedMB')),(N (F $r 'FileStreamFiles')))}
 Tbl 'SQL Databases' @('DB','SQL','SP','Status','Recovery','Compatibility','Data MB','Log MB','Total MB','FILESTREAM') $t $a.Count
-$a=@(R 'SQLBackupHistory');$t=@()
-foreach($r in (First $a)){$t+= , @((Alias 'DB' (F $r 'Name')),(Alias 'SQL' (F $r 'SQLInstance')),(E (F $r 'Type') @('D','I','L')),(DT (F $r 'LastBackupTime')),(B (F $r 'CopyOnly')),(N (F $r 'BackupSizeMB')))}
+$a=@(Get-AuditSectionRows 'SQLBackupHistory');$t=@()
+foreach($r in (Get-AuditTableLines $a)){$t+= , @((Alias 'DB' (F $r 'Name')),(Alias 'SQL' (F $r 'SQLInstance')),(E (F $r 'Type') @('D','I','L')),(DT (F $r 'LastBackupTime')),(B (F $r 'CopyOnly')),(N (F $r 'BackupSizeMB')))}
 Tbl 'Backup SQL' @('DB','SQL','Typ','Ostatnia data','CopyOnly','MB') $t $a.Count
-$a=@(R 'SQLBackupAuditStatus');$t=@()
-foreach($r in (First $a)){$t+= , @((Alias 'SQL' (F $r 'SQLInstance')),(E (F $r 'Access') @('OK','FAILED')),(N (F $r 'Rows')))}
+$a=@(Get-AuditSectionRows 'SQLBackupAuditStatus');$t=@()
+foreach($r in (Get-AuditTableLines $a)){$t+= , @((Alias 'SQL' (F $r 'SQLInstance')),(E (F $r 'Access') @('OK','FAILED')),(N (F $r 'Rows')))}
 Tbl 'Backup msdb access' @('SQL','Stan','Rekordy') $t $a.Count
-$a=@(R 'SiteCollections');$t=@()
-foreach($r in (First $a)){$t+= , @((Alias 'SITE' (F $r 'Url')),(Alias 'DB' (F $r 'ContentDB')),(SiteTemplate (F $r 'Template')),(N (F $r 'StorageMB')),(DT (F $r 'LastContentModified')))}
+$a=@(Get-AuditSectionRows 'SiteCollections');$t=@()
+foreach($r in (Get-AuditTableLines $a)){$t+= , @((Alias 'SITE' (F $r 'Url')),(Alias 'DB' (F $r 'ContentDB')),(SiteTemplate (F $r 'Template')),(N (F $r 'StorageMB')),(DT (F $r 'LastContentModified')))}
 Tbl 'Site Collections' @('Site','DB','Template','Storage MB','Ostatnia zmiana') $t $a.Count
 [void]$md.Add('## Rozszerzenia, Search i workflow')
-$a=@(R 'ServiceApplications');$t=@()
-foreach($r in (First $a)){$t+= , @((Alias 'SERVICE' (F $r 'Name')),(Kind (F $r 'Type')),(Status (F $r 'Status')))}
+$a=@(Get-AuditSectionRows 'ServiceApplications');$t=@()
+foreach($r in (Get-AuditTableLines $a)){$t+= , @((Alias 'SERVICE' (F $r 'Name')),(Kind (F $r 'Type')),(Status (F $r 'Status')))}
 Tbl 'Service Applications' @('Usluga','Typ','Stan') $t $a.Count
-$a=@(R 'SearchComponents');$t=@()
-foreach($r in (First $a)){$t+= , @((Alias 'SERVER' (F $r 'Server')),(Alias 'SERVICE' (F $r 'SearchApplication')),(Kind (F $r 'Type')))}
+$a=@(Get-AuditSectionRows 'SearchComponents');$t=@()
+foreach($r in (Get-AuditTableLines $a)){$t+= , @((Alias 'SERVER' (F $r 'Server')),(Alias 'SERVICE' (F $r 'SearchApplication')),(Kind (F $r 'Type')))}
 Tbl 'Search Components' @('Server','Search App','Typ') $t $a.Count
-$a=@(R 'SolutionsWSP');$t=@()
-foreach($r in (First $a)){$t+= , @((Alias 'WSP' (F $r 'Name')),(B (F $r 'Deployed')),(B (F $r 'ContainsGlobalAssembly')),(Status (F $r 'DeploymentState')))}
+$a=@(Get-AuditSectionRows 'SolutionsWSP');$t=@()
+foreach($r in (Get-AuditTableLines $a)){$t+= , @((Alias 'WSP' (F $r 'Name')),(B (F $r 'Deployed')),(B (F $r 'ContainsGlobalAssembly')),(Status (F $r 'DeploymentState')))}
 Tbl 'Rozwiazania WSP' @('WSP','Deployed','GAC','Stan') $t $a.Count
-$a=@(R 'WorkflowAssociations');$t=@()
-foreach($r in (First $a)){$t+= , @((Alias 'WEB' (F $r 'Web')),(Alias 'WORKFLOW' (F $r 'Name')),(B (F $r 'Enabled')))}
+$a=@(Get-AuditSectionRows 'WorkflowAssociations');$t=@()
+foreach($r in (Get-AuditTableLines $a)){$t+= , @((Alias 'WEB' (F $r 'Web')),(Alias 'WORKFLOW' (F $r 'Name')),(B (F $r 'Enabled')))}
 Tbl 'Workflow Associations' @('Web','Workflow','Enabled') $t $a.Count
-$a=@(R 'WebAppZones');$t=@()
-foreach($r in (First $a)){$t+= , @((Alias 'WEBAPP' (F $r 'WebApplication')),(E (F $r 'Zone') @('Default','Internet','Intranet','Extranet','Custom')),(B (F $r 'UseSSL')),(B (F $r 'Anonymous')),(B (F $r 'DisableKerberos')))}
+$a=@(Get-AuditSectionRows 'WebAppZones');$t=@()
+foreach($r in (Get-AuditTableLines $a)){$t+= , @((Alias 'WEBAPP' (F $r 'WebApplication')),(E (F $r 'Zone') @('Default','Internet','Intranet','Extranet','Custom')),(B (F $r 'UseSSL')),(B (F $r 'Anonymous')),(B (F $r 'DisableKerberos')))}
 Tbl 'Strefy Web Apps' @('Web App','Zone','SSL','Anonymous','DisableKerberos') $t $a.Count
 [void]$md.Add('## Dodatkowe liczniki')
 foreach($name in @('ManagedAccounts','ServiceInstances','ServiceAppProxies','ServiceAppProxyGroups','ServiceAppPools','SearchApplications','SearchTopologies','CrawlSources','FarmFeatures','SiteFeatures','WebFeatures','TimerJobs','DisabledTimerJobs','HealthRules','HealthReports','IISBindings','Certificates','WindowsServices','Webs','Lists','MySites','ManagedPaths','AlternateAccessMappings')){
-    [void]$md.Add(('- {0}: **{1}** rekordow' -f $name,@(R $name).Count))
+    [void]$md.Add(('- {0}: **{1}** rekordow' -f $name,@(Get-AuditSectionRows $name).Count))
 }
 [void]$md.Add('')
 [void]$md.Add('## Ograniczenia')
@@ -239,9 +245,17 @@ foreach($name in @('ManagedAccounts','ServiceInstances','ServiceAppProxies','Ser
 [void]$md.Add('- Zero rekordow moze znaczyc brak uprawnien lub pominiety skan, a nie brak ryzyka.')
 [void]$md.Add('- Test-SPContentDatabase oraz testy funkcjonalne wymagaja osobnego uruchomienia na farmie SE.')
 [void]$md.Add('')
+$stamp=Get-Date -Format 'yyyyMMdd_HHmmss'
+$defaultName='SP_Audit_SHAREABLE_'+$stamp+'.md'
 if(-not $OutputPath){
-    $stamp=Get-Date -Format 'yyyyMMdd_HHmmss'
-    $OutputPath=Join-Path (Split-Path -Parent $root) ('SP_Audit_SHAREABLE_'+$stamp+'.md')
+    $OutputPath=Join-Path (Split-Path -Parent $root) $defaultName
+} elseif(Test-Path -LiteralPath $OutputPath -PathType Container) {
+    $OutputPath=Join-Path $OutputPath $defaultName
+} elseif(-not [IO.Path]::GetExtension($OutputPath)) {
+    # A file path without extension becomes a .md file. Existing directories were handled above.
+    $OutputPath+='.md'
+} elseif([IO.Path]::GetExtension($OutputPath) -ine '.md') {
+    throw 'OutputPath musi wskazywac folder albo plik z rozszerzeniem .md.'
 }
 $OutputPath=[IO.Path]::GetFullPath($OutputPath)
 $body=$md -join [Environment]::NewLine
@@ -251,6 +265,12 @@ $forbidden=@('(?i)https?://','(?i)[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}',
 foreach($p in $forbidden){if($body -match $p){throw 'Walidacja bezpieczenstwa nieudana. Nic nie zapisano.'}}
 $dir=Split-Path -Parent $OutputPath
 if(-not (Test-Path -LiteralPath $dir -PathType Container)){New-Item -ItemType Directory -Path $dir -Force|Out-Null}
-[IO.File]::WriteAllText($OutputPath,$body,(New-Object System.Text.UTF8Encoding($true)))
+$tempOutput=Join-Path $dir ('SPSE_tmp_'+[guid]::NewGuid().ToString('N')+'.tmp')
+try {
+    [IO.File]::WriteAllText($tempOutput,$body,(New-Object System.Text.UTF8Encoding($true)))
+    Move-Item -LiteralPath $tempOutput -Destination $OutputPath -Force -ErrorAction Stop
+} finally {
+    if(Test-Path -LiteralPath $tempOutput){Remove-Item -LiteralPath $tempOutput -Force -ErrorAction SilentlyContinue}
+}
 Write-Host ('[RAPORT DO PRZEGLADU] '+$OutputPath) -ForegroundColor Green
 Write-Warning 'Pseudonimizowany != anonimowy. Przed udostepnieniem obowiazkowo przejrzyj caly plik.'
