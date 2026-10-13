@@ -2,7 +2,9 @@
 [CmdletBinding()]
 param(
  [string]$ConfigPath = (Join-Path $PSScriptRoot 'config.json'),
- [string[]]$Mailboxes
+ [string[]]$Mailboxes,
+ [switch]$NoEmail,
+ [switch]$OpenReport
 )
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version 2
@@ -137,7 +139,7 @@ th{background:#eaf0f7}tr:hover{background:#eef5ff}</style></head><body><main>
 "@
 $page | Set-Content (Join-Path $folder "Forwarding_$stamp.html") -Encoding UTF8
 Write-Host "Audit $state; scanned=$scanned; entries=$($rows.Count); errors=$($problems.Count); output=$folder"
-if($cfg.Email -and $cfg.Email.Enabled){
+if(-not $NoEmail -and $cfg.Email -and $cfg.Email.Enabled){
   $mail=$null;$smtp=$null
   try{
     $ec=$cfg.Email
@@ -173,6 +175,7 @@ if($cfg.Email -and $cfg.Email.Enabled){
     if($smtp){$smtp.Dispose()}
   }
 }
+if($OpenReport){ Start-Process -FilePath (Join-Path $folder "Forwarding_$stamp.html") }
 if($exchangeSession){Remove-PSSession $exchangeSession -ErrorAction SilentlyContinue}
 if($problems.Count){exit 2}
 exit 0
