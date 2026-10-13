@@ -1,5 +1,12 @@
 # Historia wersji
 
+## v2.2.1 — 2026-10-13 (poprawka)
+
+- Naprawa konfliktu funkcji `R` z aliasem `Invoke-History` w Windows PowerShell 5.1.
+- Jawny status `[MD: OK/FAILED]` oraz pełna ścieżka lokalnego raportu.
+- Odtworzenie MD także z częściowych wyników CSV i obsługa `OutputPath` bez rozszerzenia.
+- Poprawka tworzenia wierszy tabel Markdown i testy regresyjne.
+
 ## v2.2 — 2026-10-13
 
 - Nowy lokalny `New-SPSEShareableAudit.ps1`, tworzący pojedynczy raport `.md` tylko z dozwolonych pól.
