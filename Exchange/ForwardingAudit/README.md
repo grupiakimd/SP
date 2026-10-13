@@ -68,3 +68,11 @@ A test is still a live read-only interrogation of real Exchange configuration, b
 - For scheduled execution the same Windows identity must have previously created `smtp-credential.xml` on this *execution host* using `Set-SmtpCredential.ps1`. That credential is for SMTP only, not the Exchange Kerberos session.
 - The host must reach Exchange Remote PowerShell (commonly TCP 80 to /PowerShell/) and SMTP submission TCP 587. Confirm SMTP STARTTLS + SMTP AUTH actually work for the account; port accessibility alone is not proof.
 - A remote Exchange session is removed after successful normal execution. On fatal termination, PowerShell cleans up at process end.
+
+## Manual audit without email
+
+Even if Email.Enabled=true in config.json, override delivery for one run:
+
+    .\Audit-ExchangeForwarding.ps1 -NoEmail -OpenReport
+
+`-NoEmail` skips SMTP; `-OpenReport` opens the locally generated HTML in the default browser (use interactively, not in unattended Scheduled Tasks). Without `-OpenReport`, files are still saved locally. Scheduled Tasks use the config default unless explicitly supplied `-NoEmail`.
