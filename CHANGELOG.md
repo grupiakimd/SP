@@ -1,5 +1,15 @@
 # Historia wersji
 
+## v2.2 — 2026-10-13
+
+- Nowy lokalny `New-SPSEShareableAudit.ps1`, tworzący pojedynczy raport `.md` tylko z dozwolonych pól.
+- Spójne aliasowanie hostów, baz, Web Applications, site collections, WSP i workflow.
+- Celowe pomijanie kont, domen, URL, surowych komunikatów błędów, tekstów z Health Analyzer i ścieżek.
+- Opcjonalny przełącznik `-ShareableReport` do głównego audytu; nie publikuje nic automatycznie.
+- Fikcyjny test wycieku danych w Windows PowerShell 5.1 i workflow CI.
+
+
+
 ## v2.1 — 2026-10-13 (poprawka)
 
 - Obsługa katalogu nadrzędnego z wieloma przebiegami audytu.
