@@ -4,6 +4,7 @@ param(
  [string]$ConfigPath = (Join-Path $PSScriptRoot 'config.json'),
  [string[]]$Mailboxes,
  [string]$ExchangeServer,
+ [switch]$Full,
  [switch]$NoEmail,
  [switch]$OpenReport
 )
@@ -39,14 +40,44 @@ function Get-MechanismDetails([string]$Mechanism) {
     default { return @{ Friendly=$Mechanism; Location='Sprawdź konfigurację Exchange PowerShell' } }
   }
 }
-function Finding($mb,$mechanism,$destination,$status,$rule='',$details='',$keep='') {
+function Get-ReportColumns {
+  [CmdletBinding()]
+  param([switch]$Detailed)
+  if($Detailed) {
+    return @('Database','Mailbox','Address','Type','Mechanism','Destination',
+      'Status','WhereToCheck','TechnicalMechanism','Rule','RuleIdentity',
+      'Details','KeepOriginal','OriginalTarget')
+  }
+  return @('Mailbox','Address','Type','Mechanism','Destination','Status',
+    'Rule','Details','KeepOriginal')
+}
+function Get-ColumnLabels {
+  return @{
+    Database='Baza danych'; Mailbox='Skrzynka'; Address='Adres skrzynki'
+    Type='Typ skrzynki'; Mechanism='Źródło przekierowania'
+    Destination='Przekierowanie do'; Status='Status'
+    WhereToCheck='Gdzie sprawdzić'; TechnicalMechanism='Parametr techniczny'
+    Rule='Nazwa reguły'; RuleIdentity='Identyfikator reguły'
+    Details='Warunki i wyjątki'; KeepOriginal='Kopia w skrzynce'
+    OriginalTarget='Oryginalny odbiorca (surowy)'
+  }
+}
+function Get-CopyDescription([string]$Mechanism, [string]$RawFlag) {
+  # Inbox Rule forwarding does not tell us whether other actions delete/move the original.
+  if($Mechanism -like 'InboxRule.*'){return 'Zależnie od działań reguły'}
+  if($RawFlag -eq 'True'){return 'Tak'}
+  if($RawFlag -eq 'False'){return 'Nie'}
+  return 'Nie ustalono'
+}
+function Finding($mb,$mechanism,$destination,$status,$rule='',$details='',$keep='',$ruleIdentity='') {
   $info=Get-MechanismDetails $mechanism
   $script:records.Add([pscustomobject][ordered]@{
     Database=[string]$mb.Database; Mailbox=[string]$mb.DisplayName
     Address=[string]$mb.PrimarySmtpAddress; Type=[string]$mb.RecipientTypeDetails
     Mechanism=[string]$info.Friendly; Destination=(Resolve-Target $destination)
     Status=$status; WhereToCheck=[string]$info.Location; TechnicalMechanism=$mechanism
-    Rule=$rule; Details=$details; KeepOriginal=$keep
+    Rule=$rule; RuleIdentity=$ruleIdentity; Details=$details
+    KeepOriginal=(Get-CopyDescription $mechanism $keep); OriginalTarget=[string]$destination
   })
 }
 function ErrorRecord($scope,$identity,$reason) {
@@ -118,59 +149,107 @@ if($mode -eq 'Test'){
 foreach($mb in $scanList){
     $scanned++
     $keep=[string][bool]$mb.DeliverToMailboxAndForward
-    if($mb.ForwardingAddress){Finding $mb 'Mailbox.ForwardingAddress' ([string]$mb.ForwardingAddress) 'Enabled' '' '' $keep}
-    if($mb.ForwardingSmtpAddress){Finding $mb 'Mailbox.ForwardingSmtpAddress' ([string]$mb.ForwardingSmtpAddress) 'Enabled' '' '' $keep}
+    if($mb.ForwardingAddress){Finding $mb 'Mailbox.ForwardingAddress' ([string]$mb.ForwardingAddress) 'Aktywne' '' '' $keep}
+    if($mb.ForwardingSmtpAddress){Finding $mb 'Mailbox.ForwardingSmtpAddress' ([string]$mb.ForwardingSmtpAddress) 'Aktywne' '' '' $keep}
     try{
       $rules=@(Get-InboxRule -Mailbox ([string]$mb.Identity) -IncludeHidden -ErrorAction Stop)
       foreach($rule in $rules){
-        $status=if($rule.Enabled){'Enabled'}else{'Disabled'}
+        $status=if($rule.Enabled){'Aktywne'}else{'Wyłączone'}
         foreach($action in @('ForwardTo','RedirectTo','ForwardAsAttachmentTo')){
           $targets=@($rule.$action)
           foreach($target in $targets){
             if($null -eq $target -or [string]::IsNullOrWhiteSpace([string]$target)){continue}
-            Finding $mb "InboxRule.$action" ([string]$target) $status ([string]$rule.Name) ([string]$rule.Description) 'Depends on rule'
+            Finding $mb "InboxRule.$action" ([string]$target) $status ([string]$rule.Name) ([string]$rule.Description) '' ([string]$rule.Identity)
           }
         }
       }
     }catch{ErrorRecord 'InboxRule' ([string]$mb.PrimarySmtpAddress) $_.Exception.Message}
 }
 $rows=@($records.ToArray() | Sort-Object Address,Mechanism,Destination)
-$columns=@('Database','Mailbox','Address','Type','Mechanism','Destination','Status','WhereToCheck','TechnicalMechanism','Rule','Details','KeepOriginal')
+$columns=@(Get-ReportColumns -Detailed:$Full)
+$labels=Get-ColumnLabels
 $csv=Join-Path $folder "Forwarding_$stamp.csv"
-if($rows.Count){$rows | Export-Csv -Path $csv -Delimiter ';' -Encoding UTF8 -NoTypeInformation}
-else{('"' + ($columns -join '";"') + '"') | Set-Content $csv -Encoding UTF8}
-if($problems.Count){$problems.ToArray() | Export-Csv (Join-Path $folder "Errors_$stamp.csv") -Encoding UTF8 -Delimiter ';' -NoTypeInformation}
+if($rows.Count){
+  $exportRows=@(foreach($row in $rows){
+    $values=[ordered]@{}
+    foreach($column in $columns){$values[[string]$labels[$column]]=[string]$row.$column}
+    [pscustomobject]$values
+  })
+  $exportRows | Export-Csv -Path $csv -Delimiter ';' -Encoding UTF8 -NoTypeInformation
+}else{
+  $csvHead=($columns | ForEach-Object { '"' + ([string]$labels[$_]).Replace('"','""') + '"' }) -join ';'
+  $csvHead | Set-Content -LiteralPath $csv -Encoding UTF8
+}
+if($problems.Count){
+  $problems.ToArray() | Export-Csv (Join-Path $folder "Errors_$stamp.csv") -Encoding UTF8 -Delimiter ';' -NoTypeInformation
+}
 $unique=@($rows | Select-Object -ExpandProperty Address -Unique).Count
 $state=if($problems.Count){'PARTIAL'}else{'COMPLETE'}
-[pscustomobject]@{Date=(Get-Date).ToString('o');Status=$state;Mode=$mode;Databases=$dbs;Scanned=$scanned;WithForwarding=$unique;ForwardingEntries=$rows.Count;Errors=$problems.Count} |
-  ConvertTo-Json -Depth 4 | Set-Content (Join-Path $folder "Summary_$stamp.json") -Encoding UTF8
-$headerLabels=@{
-  Database='Baza'; Mailbox='Skrzynka'; Address='Adres skrzynki'; Type='Typ'
-  Mechanism='Źródło przekierowania'; Destination='Przekierowanie do'; Status='Status'
-  WhereToCheck='Gdzie sprawdzić'; TechnicalMechanism='Parametr techniczny'
-  Rule='Nazwa reguły'; Details='Warunki i wyjątki'; KeepOriginal='Kopia w skrzynce'
-}
-$thead=($columns|ForEach-Object{"<th>$(Encode $headerLabels[$_])</th>"}) -join ''
-$body=($rows|ForEach-Object{$r=$_;'<tr>'+(($columns|ForEach-Object{"<td>$(Encode $r.$_)</td>"})-join '')+'</tr>'}) -join [Environment]::NewLine
+$stateLabel=if($problems.Count){'Niepełny - błędy odczytu'}else{'Zakończono pomyślnie'}
+$completed=Get-Date
+$completedText=$completed.ToString('dd.MM.yyyy HH:mm:ss')
+[pscustomobject]@{
+  Date=$completed.ToString('o'); Status=$state; Mode=$mode
+  ReportFormat=$(if($Full){'Full'}else{'Standard'})
+  Databases=$dbs; Scanned=$scanned; WithForwarding=$unique
+  ForwardingEntries=$rows.Count; Errors=$problems.Count
+} | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $folder "Summary_$stamp.json") -Encoding UTF8
+
+$thead=($columns | ForEach-Object {'<th>'+(Encode $labels[$_])+'</th>'}) -join ''
+$body=($rows | ForEach-Object {
+  $row=$_
+  '<tr>'+(($columns | ForEach-Object {'<td>'+(Encode $row.$_)+'</td>'}) -join '')+'</tr>'
+}) -join [Environment]::NewLine
+$noResults=if($rows.Count -eq 0){'<p>Nie wykryto przekierowań w zbadanych skrzynkach.</p>'}else{''}
 $page=@"
-<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Exchange Forwarding Audit</title>
-<style>body{font:14px Segoe UI,Arial;margin:25px;background:#f5f7fa;color:#1b2b44}
-main{max-width:100%;}section{display:flex;gap:12px;flex-wrap:wrap;margin:20px 0}
-section span{background:white;border:1px solid #dbe3ec;padding:14px;border-radius:8px}
-input{padding:10px;width:350px;max-width:95%;margin-bottom:12px}
-div.scroll{overflow:auto;background:white}table{border-collapse:collapse;width:100%;white-space:nowrap}
-th,td{padding:9px 12px;border-bottom:1px solid #dbe3ec;text-align:left}
-th{background:#eaf0f7}tr:hover{background:#eef5ff}td:nth-child(5),td:nth-child(8){white-space:normal;min-width:230px;max-width:460px}</style></head><body><main>
-<h1>Exchange forwarding audit</h1><p>$(Encode $stamp) | Status: $(Encode $state) | Mode: $(Encode $mode) | selected databases only</p>
-<section><span>Scanned: $scanned</span><span>Mailboxes with forwarding: $unique</span><span>Forwarding entries: $($rows.Count)</span><span>Errors: $($problems.Count)</span></section>
-<p>Wyświetlane są tylko skrzynki z przekierowaniami. Reguły wyłączone mają status Disabled. Outlook/OWA oznacza regułę skrzynki (nie dowodzi, w jakim kliencie ją utworzono). Reguły ukryte sprawdź przez Get-InboxRule -IncludeHidden.</p>
-<p><strong>Gdzie szukać?</strong> Exchange (serwer): EAC &gt; Odbiorcy &gt; Skrzynki &gt; Funkcje skrzynki &gt; Przepływ poczty &gt; Szczegóły. Outlook/OWA: Reguły skrzynki. W kolumnie WhereToCheck jest podpowiedź; TechnicalMechanism zachowuje oryginalną nazwę pola.</p>
-<input id="q" type="search" placeholder="Filter results"><div class="scroll"><table><thead><tr>$thead</tr></thead><tbody>$body</tbody></table></div>
-<script>document.getElementById('q').addEventListener('input',function(){let q=this.value.toLowerCase();document.querySelectorAll('tbody tr').forEach(r=>r.hidden=!r.textContent.toLowerCase().includes(q))})</script>
-</main></body></html>
+<!doctype html>
+<html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Audyt przekierowań poczty Exchange</title>
+<style>
+body{font:14px/1.5 Segoe UI,Arial,sans-serif;margin:26px;background:#f5f7fa;color:#172338}
+h1{margin:0 0 8px;font-size:25px}p{margin:11px 0}
+.subtitle{color:#40536c;margin-bottom:16px}
+.stats{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}
+.stats span{display:inline-block;padding:12px 14px;background:#fff;border:1px solid #d5dfeb;border-radius:7px}
+.note{color:#40536c;max-width:1150px}
+input{padding:10px;width:320px;max-width:95%;border:1px solid #aab8c9;border-radius:5px;margin:14px 0}
+.scroll{overflow-x:auto;background:white;border:1px solid #d5dfeb;border-radius:7px}
+table{width:100%;border-collapse:collapse;white-space:nowrap}
+th,td{padding:10px 12px;text-align:left;vertical-align:top;border-bottom:1px solid #e3e8f0}
+th{background:#e9f0f8}
+tbody tr:hover{background:#f0f6ff}
+td{max-width:520px;white-space:normal;overflow-wrap:break-word;word-wrap:break-word}
+</style></head><body>
+<h1>Audyt przekierowań poczty Exchange</h1>
+<p class="subtitle">Data wykonania skanu: $(Encode $completedText) | Status: $(Encode $stateLabel)</p>
+<div class="stats"><span>Przeskanowano skrzynek: <strong>$scanned</strong></span>
+<span>Skrzynki z przekierowaniami: <strong>$unique</strong></span>
+<span>Wykryte przekierowania: <strong>$($rows.Count)</strong></span>
+<span>Błędy odczytu: <strong>$($problems.Count)</strong></span></div>
+<p class="note">Wyświetlane są wyłącznie skrzynki z wykrytymi przekierowaniami (także wyłączonymi). Audyt obejmuje również reguły ukryte dostępne przez Exchange PowerShell.</p>
+<p class="note"><strong>Gdzie szukać?</strong> Exchange (serwer): EAC &gt; Odbiorcy &gt; Skrzynki &gt; Funkcje skrzynki &gt; Przepływ poczty &gt; Szczegóły. Outlook/OWA: Reguły skrzynki.</p>
+<label for="q">Filtruj wyniki:</label>
+<input id="q" type="search" placeholder="Wpisz nazwę, adres lub źródło">
+$noResults
+<div class="scroll"><table id="results"><thead><tr>$thead</tr></thead><tbody>$body</tbody></table></div>
+<script>
+(function() {
+  var field=document.getElementById('q');
+  field.onkeyup=function() {
+    var q=field.value.toLowerCase();
+    var rows=document.querySelectorAll('#results tbody tr');
+    for(var i=0;i<rows.length;i++){
+      var content=(rows[i].textContent||rows[i].innerText||'').toLowerCase();
+      rows[i].style.display=content.indexOf(q)>=0?'':'none';
+    }
+  };
+})();
+</script>
+</body></html>
 "@
 $page | Set-Content (Join-Path $folder "Forwarding_$stamp.html") -Encoding UTF8
-Write-Host "Audit $state; scanned=$scanned; entries=$($rows.Count); errors=$($problems.Count); output=$folder"
+Write-Host "Audyt: $stateLabel; przeskanowano: $scanned; skrzynki z przekierowaniami: $unique; przekierowania: $($rows.Count); błędy: $($problems.Count); raport: $folder"
+
 if(-not $NoEmail -and $cfg.Email -and $cfg.Email.Enabled){
   $mail=$null;$smtp=$null
   try{
