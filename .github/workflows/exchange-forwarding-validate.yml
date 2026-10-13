@@ -1,0 +1,47 @@
+name: Exchange Forwarding Audit - PowerShell 5.1 validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Exchange/ForwardingAudit/**'
+      - '.github/workflows/exchange-forwarding-validate.yml'
+  pull_request:
+    paths:
+      - 'Exchange/ForwardingAudit/**'
+      - '.github/workflows/exchange-forwarding-validate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  syntax:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse every PowerShell script with Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $scripts = @(Get-ChildItem -LiteralPath 'Exchange/ForwardingAudit' -Filter '*.ps1' -File -Recurse)
+          if ($scripts.Count -eq 0) { throw 'No PowerShell scripts found' }
+          foreach ($script in $scripts) {
+            $tokens = $null
+            $parseErrors = $null
+            $null = [System.Management.Automation.Language.Parser]::ParseFile(
+              $script.FullName, [ref]$tokens, [ref]$parseErrors
+            )
+            if ($parseErrors.Count -gt 0) {
+              foreach ($problem in $parseErrors) {
+                Write-Host "$($script.Name): line $($problem.Extent.StartLineNumber), char $($problem.Extent.StartColumnNumber): $($problem.Message)"
+              }
+              throw "PowerShell parser found $($parseErrors.Count) error(s) in $($script.Name)"
+            }
+            Write-Host "PASS: $($script.Name)"
+          }
+      - name: Validate example JSON
+        shell: powershell
+        run: |
+          $null = Get-Content -LiteralPath 'Exchange/ForwardingAudit/config.example.json' -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+          Write-Host 'PASS: config.example.json'
