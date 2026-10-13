@@ -74,7 +74,7 @@ jobs:
             Write-Host "PASS: $mechanism -> $($label.Friendly)"
           }
       - name: Offline integration - four test mailboxes, standard and full reports
-        shell: powershell
+        shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           $root=Join-Path $env:RUNNER_TEMP 'exchange-audit-fixture'
