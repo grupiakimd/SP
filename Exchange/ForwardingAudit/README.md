@@ -27,19 +27,19 @@ Wymagania: Windows PowerShell 5.1, komputer dołączony do domeny AD, konto z Ex
 
 1. Pobierz folder do `C:\Skrypty\exchange_forward`.
 2. Skopiuj `config.example.json` do **lokalnego** `config.json`.
-3. Ustaw `ExchangeServer` (np. `exmb1`), rzeczywiste bazy w `Databases` i cztery adresy w `TestMailboxes`; pozostaw `Mode=Test`. Koniecznie uzupełnij też `InternalDomains` rzeczywistymi domenami SMTP Twojej organizacji.
+3. Ustaw `ExchangeServer` (np. `EXCHANGE-SERVER`), rzeczywiste bazy w `Databases` i cztery adresy w `TestMailboxes`; pozostaw `Mode=Test`. Koniecznie uzupełnij też `InternalDomains` rzeczywistymi domenami SMTP Twojej organizacji.
 4. Uruchom w Windows PowerShell 5.1:
 
        cd C:\Skrypty\exchange_forward
-       .\Audit-ExchangeForwarding.ps1 -ExchangeServer exmb1 -NoEmail -OpenReport
+       .\Audit-ExchangeForwarding.ps1 -ExchangeServer EXCHANGE-SERVER -NoEmail -OpenReport
 
 5. Administracyjny raport z **tych samych** skrzynek:
 
-       .\Audit-ExchangeForwarding.ps1 -ExchangeServer exmb1 -Full -NoEmail -OpenReport
+       .\Audit-ExchangeForwarding.ps1 -ExchangeServer EXCHANGE-SERVER -Full -NoEmail -OpenReport
 
 6. Bez zmiany pliku testowego możesz ręcznie podać adresy:
 
-       .\Audit-ExchangeForwarding.ps1 -ExchangeServer exmb1 -Mailboxes 'test1@firma.pl','test2@firma.pl','test3@firma.pl','test4@firma.pl' -NoEmail -OpenReport
+       .\Audit-ExchangeForwarding.ps1 -ExchangeServer EXCHANGE-SERVER -Mailboxes 'test1@firma.pl','test2@firma.pl','test3@firma.pl','test4@firma.pl' -NoEmail -OpenReport
 
 `-NoEmail` wyłącza wysyłkę wyłącznie w bieżącym uruchomieniu. `-OpenReport` otwiera HTML w przeglądarce — używaj tylko interaktywnie, nie w Harmonogramie zadań.
 
