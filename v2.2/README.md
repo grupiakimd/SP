@@ -1,6 +1,6 @@
 # SP — SharePoint 2019 → SE / v2.2
 
-Wersja **v2.2** rozwija v2.1 o **oddzielny, pseudonimizowany raport Markdown**, nadający się do kontrolowanego przekazania innej osobie w celu analizy migracyjnej.
+Wersja **v2.2.1** rozwija v2.1 o **oddzielny, pseudonimizowany raport Markdown**, nadający się do kontrolowanego przekazania innej osobie w celu analizy migracyjnej.
 
 ## Tryb prywatny i udostępniany
 
@@ -19,7 +19,7 @@ Set-ExecutionPolicy -Scope Process Bypass -Force
 ```
 
 `InputPath` może wskazywać konkretny folder przebiegu, katalog nadrzędny albo istniejący JSON/CSV.
-Domyślny wynik trafia **obok** katalogu wybranego przebiegu audytu.
+Domyślny wynik trafia **obok** katalogu wybranego przebiegu audytu. Jeżeli wskazano katalog nadrzędny (np. `C:\SP_Audit`), wynik będzie umieszczony w tym katalogu. Główny skrypt wypisuje `[MD: OK]` wraz z pełną ścieżką albo `[MD: FAILED]` w razie problemu.
 
 Możesz wskazać własny plik wyjściowy:
 
@@ -65,3 +65,17 @@ Na środowisku testowym bez SharePoint można wykonać:
 Test korzysta z **fikcyjnego** inwentarza i szuka charakterystycznych sekretów, nazw, adresów i loginów w wyniku. Test nie jest formalnym potwierdzeniem pełnej anonimowości.
 
 **Przed udostępnieniem przeczytaj cały plik MD**, a jeśli zawiera informacje dotyczące organizacji, zastosuj jej zasady klasyfikacji i akceptacji udostępniania. Nie umieszczaj produkcyjnych audytów ani nawet pseudonimizowanych raportów w repozytorium publicznym.
+
+## Korekta błędu `Invoke-History` (2026-10-13)
+
+Jeśli wcześniejszy generator zgłasza `Cannot locate the history for command line Farm`, pobierz aktualny `New-SPSEShareableAudit.ps1`. Wariant v2.2.1 nie korzysta z funkcji `R` kolidującej z wbudowanym aliasem PowerShell.
+
+Można przetworzyć istniejący audyt bez ponownego skanowania:
+
+```powershell
+& 'C:\temp\sprawdzenie\v22\New-SPSEShareableAudit.ps1' `
+  -InputPath 'C:\temp\sprawdzenie\v2\SP_Audit' `
+  -OutputPath 'C:\temp\sprawdzenie\SP_Audit_SHAREABLE.md'
+```
+
+`OutputPath` może wskazywać plik `.md`, istniejący katalog albo nazwę bez rozszerzenia (wtedy `.md` zostanie dopisane). Wersję pliku sprawdzaj przez jego zawartość/commit — samo istnienie repo na GitHub nie aktualizuje lokalnego skryptu.
