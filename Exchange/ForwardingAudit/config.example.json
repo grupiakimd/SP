@@ -1,0 +1,4 @@
+{
+  "Databases": ["CHANGE_ME_DB01", "CHANGE_ME_DB02", "CHANGE_ME_DB03", "CHANGE_ME_DB04", "CHANGE_ME_DB05"],
+  "OutputDirectory": "Reports"
+}
