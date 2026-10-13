@@ -29,7 +29,8 @@ $D=@{};$risk=@();$errors=@();$meta=$null;$mode='CSV_RECOVERY'
 $i=Get-Item -LiteralPath $InputPath -ErrorAction Stop
 if ($i.PSIsContainer) {
     $possible=@(Get-ChildItem -LiteralPath $i.FullName -Recurse -File -ErrorAction Stop |
-        Where-Object {$_.Name -in @('FullInventory.json','Farm.csv','SPDatabases.csv')} |
+        Where-Object { $_.Name -eq 'FullInventory.json' -or $_.Name -in @('MigrationRisks.csv','CollectionErrors.csv') -or
+            ($_.Extension -ieq '.csv' -and ($_.BaseName -in $names)) } |
         Sort-Object LastWriteTime -Descending)
     if ($possible.Count -eq 0){throw 'Nie znaleziono plikow audytu w katalogu.'}
     $root=$possible[0].DirectoryName
