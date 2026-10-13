@@ -4,17 +4,22 @@ on:
     paths:
       - 'v2.2/**'
       - 'tests/Test-ShareableAudit.ps1'
+      - 'tests/Test-SPAuditScheduler.ps1'
       - '.github/workflows/shareable-audit.yml'
   pull_request:
     paths:
       - 'v2.2/**'
       - 'tests/Test-ShareableAudit.ps1'
+      - 'tests/Test-SPAuditScheduler.ps1'
       - '.github/workflows/shareable-audit.yml'
 jobs:
   privacy-smoke:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - name: PowerShell 5.1 parser and scheduled-task checks
+        shell: powershell
+        run: .\tests\Test-SPAuditScheduler.ps1
       - name: PowerShell 5.1 privacy regression test
         shell: powershell
         run: .\tests\Test-ShareableAudit.ps1
