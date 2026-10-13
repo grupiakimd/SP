@@ -24,5 +24,6 @@
       "admin@example.local"
     ],
     "CredentialFile": "smtp-credential.xml"
-  }
+  },
+  "ExchangeServer": "exchange01.example.local"
 }
