@@ -97,8 +97,21 @@ try {
     if (-not $reportExists -or -not $mdExists) {
         throw 'Brak HTML lub MD: wyniku nie mozna uznac za kompletny.'
     }
-    if ($errorCount -ne 0 -or -not $jsonExists) {
-        Write-Warning 'PARTIAL: nie wszystkie sekcje zebrano. Sprawdz CollectionErrors.csv oraz AuditStatus.txt.'
+    $metadataPath = Join-Path $run.FullName 'AuditMetadata.json'
+    $incompleteEvidence = $true
+    if (Test-Path -LiteralPath $metadataPath -PathType Leaf) {
+        try {
+            $meta = Get-Content -LiteralPath $metadataPath -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+            $incompleteEvidence = ($meta.ReadinessScore -eq 'NOT_SCORED_INCOMPLETE_EVIDENCE' -or
+                                   $meta.DeepWebLimitReached -eq $true)
+            Write-Host ("ReadinessScore={0}; DeepWebLimitReached={1}" -f
+                        $meta.ReadinessScore,$meta.DeepWebLimitReached)
+        } catch {
+            Write-Warning 'AuditMetadata.json jest uszkodzony lub niekompletny.'
+        }
+    }
+    if ($errorCount -ne 0 -or -not $jsonExists -or $incompleteEvidence) {
+        Write-Warning 'PARTIAL: niepelny audyt. Sprawdz AuditMetadata.json, CollectionErrors.csv i AuditStatus.txt.'
         $exitCode = 2
     } else {
         $exitCode = 0
