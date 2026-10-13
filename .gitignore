@@ -1,0 +1,27 @@
+# Nigdy nie publikuj wyników inwentaryzacji produkcyjnej
+SP2019_Audit_*/
+SP2019_Audit_*.zip
+**/FullInventory.json
+**/AuditMetadata.json
+**/SPSE_Readiness_Report.html
+**/CollectionErrors.csv
+**/MigrationRisks.csv
+*.csv
+*.zip
+
+# Dane dostępowe i certyfikaty prywatne
+.env
+.env.*
+*.pfx
+*.p12
+*.pem
+*.key
+*secrets*.json
+*credentials*.json
+
+# Tymczasowe
+*.tmp
+*.log
+Thumbs.db
+.DS_Store
+.vscode/
