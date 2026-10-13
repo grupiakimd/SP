@@ -12,6 +12,7 @@ $cfgFile=Join-Path $folder 'config.json'
 $fixture=@{
   ExchangeServer='fixture.exchange.local'; Mode='Test'
   Databases=@('TEST-DB')
+  InternalDomains=@('example.local')
   TestMailboxes=@('one@example.local','two@example.local','three@example.local','four@example.local')
   OutputDirectory=$folder
   Email=@{Enabled=$false}
@@ -26,7 +27,7 @@ function Get-Mailbox {
   [pscustomobject]@{
     Database='TEST-DB'; Identity=$Identity; DisplayName=$Identity
     PrimarySmtpAddress=$Identity; RecipientTypeDetails=if($Identity -eq 'four@example.local'){'SharedMailbox'}else{'UserMailbox'}
-    ForwardingAddress=$null
+    ForwardingAddress=if($Identity -eq 'four@example.local'){'External Contact'}else{$null}
     ForwardingSmtpAddress=if($Identity -eq 'one@example.local'){'smtp:forward@example.net'}else{$null}
     DeliverToMailboxAndForward=$false
   }
@@ -44,7 +45,7 @@ function Get-InboxRule {
     [pscustomobject]@{
       Name='Forward from user'; Identity='two@example.local\Forward from user'
       Enabled=$true; Description='Forward matching messages'
-      ForwardTo=@('copy@example.net'); RedirectTo=@(); ForwardAsAttachmentTo=@()
+      ForwardTo=@('copy@example.local'); RedirectTo=@(); ForwardAsAttachmentTo=@('unresolved-directory-entry')
     }
   }
   if($Mailbox -eq 'three@example.local'){
@@ -57,7 +58,13 @@ function Get-InboxRule {
 }
 function Get-Recipient {
   param([string]$Identity)
-  throw 'Unexpected recipient resolution in the fixture'
+  if($Identity -eq 'External Contact'){
+    return [pscustomobject]@{
+      RecipientTypeDetails='MailContact'; PrimarySmtpAddress='contact@example.local'
+      ExternalEmailAddress='SMTP:outside@example.org'
+    }
+  }
+  throw 'Unresolved fixture recipient'
 }
 $source=Join-Path (Split-Path $PSScriptRoot -Parent) 'Audit-ExchangeForwarding.ps1'
 if($ReportFormat -eq 'Full'){
