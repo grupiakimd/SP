@@ -153,7 +153,7 @@ function Tbl([string]$title,[string[]]$head,[object[]]$arr,[int]$total){
 # Generate table lines before passing between PowerShell functions.
 # Strings are intentionally used instead of nested arrays, which PowerShell pipelines may flatten.
 function Get-AuditTableLines([object[]]$Rows) {
-    foreach ($record in @($Rows | Select-Object -Get-AuditTableLines $MaxRowsPerSection)) {
+    foreach ($record in @($Rows | Select-Object -First $MaxRowsPerSection)) {
         Write-Output (TxtRow ([object[]]$record))
     }
 }
