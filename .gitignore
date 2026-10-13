@@ -1,6 +1,8 @@
 # Nigdy nie publikuj wyników inwentaryzacji produkcyjnej
 SP2019_Audit_*/
 SP2019_Audit_*.zip
+**/SP_Audit_SHAREABLE_*.md
+**/Audit_for_review.md
 **/FullInventory.json
 **/AuditMetadata.json
 **/AuditStatus.txt
