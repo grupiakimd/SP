@@ -106,7 +106,7 @@ $cfg=Get-Content -LiteralPath $ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
 # Exact SMTP-domain allowlist. All internal accepted SMTP domains must be listed.
 $internalDomains=@($cfg.InternalDomains | ForEach-Object {
   $domain=([string]$_).Trim().ToLowerInvariant()
-  if($domain -notmatch '^[a-z0-9](?:[a-z0-9-]*\.)+[a-z0-9-]+$' -or $domain -match '^example\.'){
+  if($domain -notmatch '^[a-z0-9](?:[a-z0-9-]*\.)+[a-z0-9-]+$'){
     throw "Niepoprawna domena InternalDomains: '$domain'."
   }
   $domain
