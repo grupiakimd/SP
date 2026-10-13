@@ -48,6 +48,7 @@ if(!(Get-Command Get-Mailbox -ErrorAction SilentlyContinue)){
   $hostName=if($PSBoundParameters.ContainsKey('ExchangeServer')) { $ExchangeServer } else { [string]$cfg.ExchangeServer }
   if([string]::IsNullOrWhiteSpace($hostName)){throw 'Set ExchangeServer to the real Exchange FQDN in config.json or specify -ExchangeServer.'}
   if($hostName -match '(?i)(^|\.)example\.(local|com|net|org)$'){throw "Placeholder ExchangeServer '$hostName' detected. Replace it with the actual Exchange hostname in config.json or use -ExchangeServer."}
+  if($hostName -notmatch '^[a-zA-Z0-9][a-zA-Z0-9.-]*$'){throw 'ExchangeServer must be a plain server DNS name, not a URL.'}
   $uri="http://$hostName/PowerShell/"
   try {
     $exchangeSession=New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri $uri -Authentication Kerberos -ErrorAction Stop
