@@ -40,7 +40,38 @@ try {
             throw ('Brak oczekiwanej danej technicznej: '+$expected)
         }
     }
-    Write-Host 'PASS: pseudonimizacja i zachowanie zaleznosci dzialaja na fikcyjnych danych.' -ForegroundColor Green
+    # Regressions: PS alias "r" is Invoke-History. Also detect accidental flattening of array rows.
+    if ($md -notmatch '(?m)^\\| SERVER-001 \\| APPLICATION \\| ONLINE \\| 16\\.0\\.10399\\.20000 \\|
+} finally {
+    Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+}) {
+        throw 'FarmServers: uszkodzona tabela lub bledne zachowanie funkcji w PowerShell 5.1.'
+    }
+    if ($md -notmatch '(?m)^\\| DB-001 \\| SERVER-[0-9]+ \\| WEBAPP-001 \\| 2 \\| 500 \\| NO \\| YES \\| 16\\.0\\.10399\\.20000 \\|
+} finally {
+    Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+}){
+        throw 'ContentDatabases: niepelny wiersz tabeli lub utrata relacji.'
+    }
+
+    # Explicit file path without extension should automatically become .md.
+    $extensionless = Join-Path $root 'test_no_extension'
+    & (Join-Path $PSScriptRoot '..\\v2.2\\New-SPSEShareableAudit.ps1') -InputPath $root -OutputPath $extensionless
+    if(-not (Test-Path -LiteralPath ($extensionless+'.md'))){throw 'Brak automatycznego rozszerzenia .md.'}
+
+    # CSV fallback must work without FullInventory.json.
+    $csvRoot=Join-Path $root 'csv_only'
+    New-Item -ItemType Directory -Path $csvRoot -Force | Out-Null
+    @([pscustomobject]@{Name='PRIVATE-SERVER.example.local';Role='Application';Status='Online';BuildVersion='16.0.10399.20000'}) |
+        Export-Csv -LiteralPath (Join-Path $csvRoot 'FarmServers.csv') -Encoding UTF8 -Delimiter ';' -NoTypeInformation
+    $csvOut=Join-Path $csvRoot 'csv_result.md'
+    & (Join-Path $PSScriptRoot '..\\v2.2\\New-SPSEShareableAudit.ps1') -InputPath $csvRoot -OutputPath $csvOut
+    if(-not (Test-Path -LiteralPath $csvOut)){throw 'Brak raportu w trybie CSV.'}
+    $csvMd=Get-Content -LiteralPath $csvOut -Raw -Encoding UTF8
+    if($csvMd -notmatch 'CSV_RECOVERY' -or $csvMd -notmatch 'SERVER-001' -or $csvMd -match 'PRIVATE-SERVER'){
+        throw 'CSV fallback: brak lub ujawnienie identyfikatorow.'
+    }
+    Write-Host 'PASS: pseudonimizacja, aliasy, tabele, CSV fallback i pliki .md.' -ForegroundColor Green
 } finally {
     Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
 }
