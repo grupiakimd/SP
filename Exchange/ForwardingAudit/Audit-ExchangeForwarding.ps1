@@ -144,7 +144,13 @@ $unique=@($rows | Select-Object -ExpandProperty Address -Unique).Count
 $state=if($problems.Count){'PARTIAL'}else{'COMPLETE'}
 [pscustomobject]@{Date=(Get-Date).ToString('o');Status=$state;Mode=$mode;Databases=$dbs;Scanned=$scanned;WithForwarding=$unique;ForwardingEntries=$rows.Count;Errors=$problems.Count} |
   ConvertTo-Json -Depth 4 | Set-Content (Join-Path $folder "Summary_$stamp.json") -Encoding UTF8
-$thead=($columns|ForEach-Object{"<th>$(Encode $_)</th>"}) -join ''
+$headerLabels=@{
+  Database='Baza'; Mailbox='Skrzynka'; Address='Adres skrzynki'; Type='Typ'
+  Mechanism='Źródło przekierowania'; Destination='Przekierowanie do'; Status='Status'
+  WhereToCheck='Gdzie sprawdzić'; TechnicalMechanism='Parametr techniczny'
+  Rule='Nazwa reguły'; Details='Warunki i wyjątki'; KeepOriginal='Kopia w skrzynce'
+}
+$thead=($columns|ForEach-Object{"<th>$(Encode $headerLabels[$_])</th>"}) -join ''
 $body=($rows|ForEach-Object{$r=$_;'<tr>'+(($columns|ForEach-Object{"<td>$(Encode $r.$_)</td>"})-join '')+'</tr>'}) -join [Environment]::NewLine
 $page=@"
 <!doctype html><html lang="en"><head><meta charset="utf-8"><title>Exchange Forwarding Audit</title>
@@ -154,7 +160,7 @@ section span{background:white;border:1px solid #dbe3ec;padding:14px;border-radiu
 input{padding:10px;width:350px;max-width:95%;margin-bottom:12px}
 div.scroll{overflow:auto;background:white}table{border-collapse:collapse;width:100%;white-space:nowrap}
 th,td{padding:9px 12px;border-bottom:1px solid #dbe3ec;text-align:left}
-th{background:#eaf0f7}tr:hover{background:#eef5ff}</style></head><body><main>
+th{background:#eaf0f7}tr:hover{background:#eef5ff}td:nth-child(5),td:nth-child(8){white-space:normal;min-width:230px;max-width:460px}</style></head><body><main>
 <h1>Exchange forwarding audit</h1><p>$(Encode $stamp) | Status: $(Encode $state) | Mode: $(Encode $mode) | selected databases only</p>
 <section><span>Scanned: $scanned</span><span>Mailboxes with forwarding: $unique</span><span>Forwarding entries: $($rows.Count)</span><span>Errors: $($problems.Count)</span></section>
 <p>Wyświetlane są tylko skrzynki z przekierowaniami. Reguły wyłączone mają status Disabled. Outlook/OWA oznacza regułę skrzynki (nie dowodzi, w jakim kliencie ją utworzono). Reguły ukryte sprawdź przez Get-InboxRule -IncludeHidden.</p>
