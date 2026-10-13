@@ -1,6 +1,9 @@
 #requires -Version 5.1
 [CmdletBinding()]
-param([string]$ConfigPath = (Join-Path $PSScriptRoot 'config.json'))
+param(
+ [string]$ConfigPath = (Join-Path $PSScriptRoot 'config.json'),
+ [string[]]$Mailboxes
+)
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version 2
 function Encode($s) { [Net.WebUtility]::HtmlEncode([string]$s) }
@@ -26,7 +29,15 @@ function ErrorRecord($scope,$identity,$reason) {
 if(!(Test-Path -LiteralPath $ConfigPath -PathType Leaf)){throw "Missing config.json: $ConfigPath"}
 $cfg=Get-Content -LiteralPath $ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $dbs=@($cfg.Databases | Where-Object { $_ -and $_ -notmatch '^CHANGE_ME_' } | Select-Object -Unique)
-if($dbs.Count -ne 5){throw 'Exactly five real database names required in config.json; placeholders not accepted.'}
+$mode=[string]$cfg.Mode
+if(!$mode){$mode='Test'}
+if($mode -notin @('Test','Full')){throw 'Mode must be Test or Full.'}
+if($mode -eq 'Full' -and $dbs.Count -ne 5){throw 'Full mode requires exactly five real databases.'}
+$selected=@()
+if($PSBoundParameters.ContainsKey('Mailboxes')){$selected=@($Mailboxes | Where-Object {$_ -and $_.Trim()} | Select-Object -Unique)}
+elseif($mode -eq 'Test'){$selected=@($cfg.TestMailboxes | Where-Object {$_ -and $_.Trim()} | Select-Object -Unique)}
+if($mode -eq 'Test' -and $selected.Count -eq 0){throw 'Test mode requires Mailboxes parameter or TestMailboxes in config.'}
+if($mode -eq 'Test' -and $dbs.Count -eq 0){throw 'Test mode requires at least one allowed database.'}
 if(!(Get-Command Get-Mailbox -ErrorAction SilentlyContinue)){
   $install=[Environment]::GetEnvironmentVariable('ExchangeInstallPath')
   if(!$install){throw 'Run on an Exchange server with Exchange Management Tools (ExchangeInstallPath missing).'}
@@ -46,12 +57,30 @@ $stamp=Get-Date -Format 'yyyyMMdd_HHmmss'
 $records=New-Object 'System.Collections.Generic.List[object]'
 $problems=New-Object 'System.Collections.Generic.List[object]'
 $scanned=0
-foreach($db in $dbs){
-  try {
-    $null=Get-MailboxDatabase -Identity $db -ErrorAction Stop
-    $mailboxes=@(Get-Mailbox -Database $db -RecipientTypeDetails UserMailbox,SharedMailbox -ResultSize Unlimited -ErrorAction Stop)
-  } catch { ErrorRecord 'Database' $db $_.Exception.Message; continue }
-  foreach($mb in $mailboxes){
+$scanList=New-Object 'System.Collections.Generic.List[object]'
+if($mode -eq 'Test'){
+  foreach($identity in $selected){
+    try{
+      $mb=Get-Mailbox -Identity $identity -ErrorAction Stop
+      if([string]$mb.RecipientTypeDetails -notin @('UserMailbox','SharedMailbox')){
+        ErrorRecord 'Scope' $identity 'Mailbox type excluded';continue
+      }
+      if(([string]$mb.Database) -notin $dbs){
+        ErrorRecord 'Scope' $identity 'Mailbox database not in allowlist';continue
+      }
+      $scanList.Add($mb)
+    }catch{ErrorRecord 'Mailbox' $identity $_.Exception.Message}
+  }
+}else{
+  foreach($db in $dbs){
+    try{
+      $null=Get-MailboxDatabase -Identity $db -ErrorAction Stop
+      $found=@(Get-Mailbox -Database $db -RecipientTypeDetails UserMailbox,SharedMailbox -ResultSize Unlimited -ErrorAction Stop)
+      foreach($mb in $found){$scanList.Add($mb)}
+    }catch{ErrorRecord 'Database' $db $_.Exception.Message}
+  }
+}
+foreach($mb in $scanList){
     $scanned++
     $keep=[string][bool]$mb.DeliverToMailboxAndForward
     if($mb.ForwardingAddress){Finding $mb 'Mailbox.ForwardingAddress' ([string]$mb.ForwardingAddress) 'Enabled' '' '' $keep}
@@ -69,7 +98,6 @@ foreach($db in $dbs){
         }
       }
     }catch{ErrorRecord 'InboxRule' ([string]$mb.PrimarySmtpAddress) $_.Exception.Message}
-  }
 }
 $rows=@($records.ToArray() | Sort-Object Address,Mechanism,Destination)
 $columns=@('Database','Mailbox','Address','Type','Mechanism','Destination','Status','Rule','Details','KeepOriginal')
@@ -79,7 +107,7 @@ else{('"' + ($columns -join '";"') + '"') | Set-Content $csv -Encoding UTF8}
 if($problems.Count){$problems.ToArray() | Export-Csv (Join-Path $folder "Errors_$stamp.csv") -Encoding UTF8 -Delimiter ';' -NoTypeInformation}
 $unique=@($rows | Select-Object -ExpandProperty Address -Unique).Count
 $state=if($problems.Count){'PARTIAL'}else{'COMPLETE'}
-[pscustomobject]@{Date=(Get-Date).ToString('o');Status=$state;Databases=$dbs;Scanned=$scanned;WithForwarding=$unique;ForwardingEntries=$rows.Count;Errors=$problems.Count} |
+[pscustomobject]@{Date=(Get-Date).ToString('o');Status=$state;Mode=$mode;Databases=$dbs;Scanned=$scanned;WithForwarding=$unique;ForwardingEntries=$rows.Count;Errors=$problems.Count} |
   ConvertTo-Json -Depth 4 | Set-Content (Join-Path $folder "Summary_$stamp.json") -Encoding UTF8
 $thead=($columns|ForEach-Object{"<th>$(Encode $_)</th>"}) -join ''
 $body=($rows|ForEach-Object{$r=$_;'<tr>'+(($columns|ForEach-Object{"<td>$(Encode $r.$_)</td>"})-join '')+'</tr>'}) -join [Environment]::NewLine
@@ -92,7 +120,7 @@ input{padding:10px;width:350px;max-width:95%;margin-bottom:12px}
 div.scroll{overflow:auto;background:white}table{border-collapse:collapse;width:100%;white-space:nowrap}
 th,td{padding:9px 12px;border-bottom:1px solid #dbe3ec;text-align:left}
 th{background:#eaf0f7}tr:hover{background:#eef5ff}</style></head><body><main>
-<h1>Exchange forwarding audit</h1><p>$(Encode $stamp) | Status: $(Encode $state) | selected databases only</p>
+<h1>Exchange forwarding audit</h1><p>$(Encode $stamp) | Status: $(Encode $state) | Mode: $(Encode $mode) | selected databases only</p>
 <section><span>Scanned: $scanned</span><span>Mailboxes with forwarding: $unique</span><span>Forwarding entries: $($rows.Count)</span><span>Errors: $($problems.Count)</span></section>
 <p>Only mailboxes with configured forwarding appear below. Disabled rules are marked. Details may include rule conditions and exceptions.</p>
 <input id="q" type="search" placeholder="Filter results"><div class="scroll"><table><thead><tr>$thead</tr></thead><tbody>$body</tbody></table></div>
@@ -101,5 +129,41 @@ th{background:#eaf0f7}tr:hover{background:#eef5ff}</style></head><body><main>
 "@
 $page | Set-Content (Join-Path $folder "Forwarding_$stamp.html") -Encoding UTF8
 Write-Host "Audit $state; scanned=$scanned; entries=$($rows.Count); errors=$($problems.Count); output=$folder"
+if($cfg.Email -and $cfg.Email.Enabled){
+  $mail=$null;$smtp=$null
+  try{
+    $ec=$cfg.Email
+    if(!$ec.Host -or !$ec.From -or !$ec.To -or !$ec.CredentialFile){throw 'Email Host, From, To and CredentialFile are required.'}
+    if($ec.Port -lt 1 -or $ec.Port -gt 65535){throw 'Invalid SMTP port.'}
+    if($ec.UseStartTls -ne $true){throw 'SMTP email requires UseStartTls=true. This implementation supports STARTTLS (typically port 587), not implicit TLS port 465.'}
+    $credentialFile=[string]$ec.CredentialFile
+    if(![IO.Path]::IsPathRooted($credentialFile)){$credentialFile=Join-Path $PSScriptRoot $credentialFile}
+    $credential=Import-Clixml -LiteralPath $credentialFile -ErrorAction Stop
+    if($credential -isnot [pscredential]){throw 'Invalid credential file'}
+    $mail=New-Object Net.Mail.MailMessage
+    $mail.From=[string]$ec.From
+    foreach($recipient in @($ec.To)){if($recipient){[void]$mail.To.Add([string]$recipient)}}
+    if(!$mail.To.Count){throw 'No email recipients.'}
+    $mail.Subject="Exchange forwarding audit ($mode): $state - $stamp"
+    $mail.Body="Scanned: $scanned; mailboxes with forwarding: $unique; entries: $($rows.Count); errors: $($problems.Count). See attached reports."
+    $mail.Attachments.Add((New-Object Net.Mail.Attachment (Join-Path $folder "Forwarding_$stamp.html")))
+    $mail.Attachments.Add((New-Object Net.Mail.Attachment $csv))
+    $mail.Attachments.Add((New-Object Net.Mail.Attachment (Join-Path $folder "Summary_$stamp.json")))
+    if($problems.Count){$mail.Attachments.Add((New-Object Net.Mail.Attachment (Join-Path $folder "Errors_$stamp.csv")))}
+    $smtp=New-Object Net.Mail.SmtpClient([string]$ec.Host,[int]$ec.Port)
+    $smtp.EnableSsl=$true
+    $smtp.UseDefaultCredentials=$false
+    $smtp.Credentials=$credential.GetNetworkCredential()
+    $smtp.Timeout=30000
+    $smtp.Send($mail)
+    Write-Host 'SMTP report sent.'
+  }catch{
+    Write-Error -Message ("SMTP delivery failed: "+$_.Exception.Message) -ErrorAction Continue
+    exit 3
+  }finally{
+    if($mail){$mail.Dispose()}
+    if($smtp){$smtp.Dispose()}
+  }
+}
 if($problems.Count){exit 2}
 exit 0
