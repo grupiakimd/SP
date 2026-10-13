@@ -76,3 +76,13 @@ Even if Email.Enabled=true in config.json, override delivery for one run:
     .\Audit-ExchangeForwarding.ps1 -NoEmail -OpenReport
 
 `-NoEmail` skips SMTP; `-OpenReport` opens the locally generated HTML in the default browser (use interactively, not in unattended Scheduled Tasks). Without `-OpenReport`, files are still saved locally. Scheduled Tasks use the config default unless explicitly supplied `-NoEmail`.
+
+## Choosing the remote Exchange server
+
+Set `ExchangeServer` in local `config.json` to the actual FQDN, e.g. `exch01.corp.contoso.local` (replace this example with your own server). No scheme or /PowerShell/ path is needed. The `exchange01.example.local` value is deliberately blocked as a placeholder.
+
+For a one-time manual test you can override the configuration with:
+
+    .\Audit-ExchangeForwarding.ps1 -ExchangeServer 'exch01.corp.contoso.local' -NoEmail -OpenReport
+
+From the execution host, diagnose network reachability with `Test-NetConnection <Exchange-FQDN> -Port 80`. Ensure the scheduled task account has permissions for remote Exchange PowerShell and Kerberos. SMTP 587 is separate and is used only when email is enabled.
