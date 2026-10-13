@@ -79,3 +79,13 @@ Można przetworzyć istniejący audyt bez ponownego skanowania:
 ```
 
 `OutputPath` może wskazywać plik `.md`, istniejący katalog albo nazwę bez rozszerzenia (wtedy `.md` zostanie dopisane). Wersję pliku sprawdzaj przez jego zawartość/commit — samo istnienie repo na GitHub nie aktualizuje lokalnego skryptu.
+
+## Nocny audyt przez Task Scheduler (v2.2.1)
+
+W katalogu [scheduler/](scheduler/) znajdują się:
+
+- [Run-SPAudit-Night.ps1](scheduler/Run-SPAudit-Night.ps1) — pełny audyt i sprawdzenie statusu wyników.
+- [Register-SPAuditTask.ps1](scheduler/Register-SPAuditTask.ps1) — jednorazowe zadanie o najbliższej 22:00 czasu serwera, z limitem 8 godzin.
+- [README.md](scheduler/README.md) — instrukcja instalacji i diagnostyka.
+
+Nie kopiuj samych dwóch plików bez pozostałych czterech komponentów audytu v2.2.1. Instalator wymaga lokalnych uprawnień administratora i interaktywnie pobiera poświadczenia konta do harmonogramu.
