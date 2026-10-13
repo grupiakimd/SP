@@ -34,7 +34,7 @@ if (-not [Environment]::Is64BitProcess) {
     throw 'Uruchom Windows PowerShell 5.1 w wersji 64-bit.'
 }
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
-$principal = New-Object Security.Principal.WindowsPrincipal($identity)
+$principal = [Security.Principal.WindowsPrincipal]::new($identity)
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     throw 'Uruchom PowerShell jako administrator na serwerze SharePoint APP/WFE.'
 }
@@ -66,7 +66,7 @@ if (-not $PSBoundParameters.ContainsKey('At')) {
     throw 'Podana data uruchomienia musi byc w przyszlosci.'
 }
 
-$existing = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+$existing = Get-ScheduledTask -TaskPath '\' -TaskName $TaskName -ErrorAction SilentlyContinue
 if ($null -ne $existing -and -not $ReplaceExisting) {
     throw ("Zadanie '{0}' juz istnieje. Uzyj -ReplaceExisting tylko jesli chcesz je swiadomie zastapic." -f $TaskName)
 }
@@ -104,6 +104,7 @@ try {
     $password = $Credential.GetNetworkCredential().Password
     $params = @{
         TaskName = $TaskName
+        TaskPath = '\'
         Action = $action
         Trigger = $trigger
         Settings = $settings
@@ -119,7 +120,7 @@ try {
     $password = $null
     $Credential = $null
 }
-$task = Get-ScheduledTask -TaskName $TaskName -ErrorAction Stop
+$task = Get-ScheduledTask -TaskPath '\' -TaskName $TaskName -ErrorAction Stop
 Write-Host ('REGISTERED: {0} / state: {1}' -f $task.TaskName,$task.State) -ForegroundColor Green
 Write-Host ('NEXT RUN: {0}; account: {1}' -f $At.ToString('yyyy-MM-dd HH:mm:ss'),$task.Principal.UserId)
 Write-Host 'Po uruchomieniu sprawdz Get-ScheduledTaskInfo, AuditStatus.txt oraz lokalny log NightAudit_*.log.'
