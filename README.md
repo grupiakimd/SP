@@ -50,6 +50,20 @@ Następnie otwórz `SPSE_Readiness_Report.html` z katalogu przebiegu. Więcej sz
 
 Skrypt tworzy **jeden plik Markdown** z aliasami zamiast identyfikatorów infrastruktury. To pseudonimizacja, nie gwarancja anonimowości: przejrzyj wynik przed wysłaniem. Nie udostępniaj JSON/CSV/HTML z produkcji. Więcej: [`v2.2/README.md`](v2.2/README.md).
 
+## Pełny nocny audyt w Harmonogramie zadań (v2.2.1)
+
+Gotowy launcher i instalator jednorazowego zadania na najbliższą 22:00 czasu serwera:
+
+- [Run-SPAudit-Night.ps1](v2.2/scheduler/Run-SPAudit-Night.ps1) — pełny audyt, lokalny log, kontrola HTML/MD/JSON.
+- [Register-SPAuditTask.ps1](v2.2/scheduler/Register-SPAuditTask.ps1) — rejestracja zadania Windows Task Scheduler.
+- [Instrukcja offline](v2.2/scheduler/README.md) — kompletna struktura plików i weryfikacja rano.
+
+Po rozpakowaniu folderu v2.2 na serwerze APP:
+
+    & "C:\temp\sprawdzenie\v22\scheduler\Register-SPAuditTask.ps1"
+
+Instalator poprosi lokalnie o konto i hasło. Wyniki audytu nie są publikowane na GitHubie.
+
 ## Bezpieczeństwo i ograniczenia
 
 - **Nie publikuj wyników audytu** (`FullInventory.json`, CSV, raportów HTML z produkcji, ZIP-ów wynikowych). Mogą zawierać nazwy serwerów, kont, adresy wewnętrzne, ścieżki oraz wpisy diagnostyczne.
