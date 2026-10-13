@@ -27,7 +27,7 @@ function Get-Mailbox {
   [pscustomobject]@{
     Database='TEST-DB'; Identity=$Identity; DisplayName=$Identity
     PrimarySmtpAddress=$Identity; RecipientTypeDetails=if($Identity -eq 'four@example.local'){'SharedMailbox'}else{'UserMailbox'}
-    ForwardingAddress=if($Identity -eq 'four@example.local'){'External Contact'}else{$null}
+    ForwardingAddress=if($Identity -eq 'four@example.local'){'contact@example.local'}else{$null}
     ForwardingSmtpAddress=if($Identity -eq 'one@example.local'){'smtp:forward@example.net'}else{$null}
     DeliverToMailboxAndForward=$false
   }
@@ -58,7 +58,7 @@ function Get-InboxRule {
 }
 function Get-Recipient {
   param([string]$Identity)
-  if($Identity -eq 'External Contact'){
+  if($Identity -eq 'contact@example.local'){
     return [pscustomobject]@{
       RecipientTypeDetails='MailContact'; PrimarySmtpAddress='contact@example.local'
       ExternalEmailAddress='SMTP:outside@example.org'
