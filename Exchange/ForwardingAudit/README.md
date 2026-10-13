@@ -86,3 +86,14 @@ For a one-time manual test you can override the configuration with:
     .\Audit-ExchangeForwarding.ps1 -ExchangeServer 'exch01.corp.contoso.local' -NoEmail -OpenReport
 
 From the execution host, diagnose network reachability with `Test-NetConnection <Exchange-FQDN> -Port 80`. Ensure the scheduled task account has permissions for remote Exchange PowerShell and Kerberos. SMTP 587 is separate and is used only when email is enabled.
+
+## Reading the forwarding source (friendly names)
+
+The HTML and CSV reports show an administrator-friendly **Mechanism** value and two additional fields:
+- `Mechanism`: `Outlook / OWA - reguła: ...` for Inbox Rules, or `Exchange (serwer) - ForwardingAddress/ForwardingSmtpAddress` for mailbox-level forwarding.
+- `WhereToCheck`: how to locate the setting. Server forwarding: Exchange EAC > Recipients > Mailboxes > Mailbox Features > Mail Flow > View details, or Exchange Management Shell `Get-Mailbox`. Inbox Rules: Outlook/OWA rules or `Get-InboxRule -Mailbox <address> -IncludeHidden` in Exchange PowerShell.
+- `TechnicalMechanism`: unchanged Exchange property/action name, e.g. `InboxRule.ForwardTo`.
+
+**Accuracy:** Inbox Rules are server-stored and may have been created via Outlook, OWA or administrator PowerShell. The label is a category, **not** proof of which application or person created the rule. Hidden rules may not be visible in Outlook/OWA; use Exchange PowerShell. ForwardingAddress can resolve to a mail contact with an external address, so it does not necessarily mean internal delivery.
+
+The .ps1 file is distributed as UTF-8 with BOM for correct Polish text under Windows PowerShell 5.1. The JSON config is read explicitly as UTF-8.
