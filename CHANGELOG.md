@@ -1,5 +1,13 @@
 # Historia wersji
 
+## v2.1 — 2026-10-13 (poprawka)
+
+- Obsługa katalogu nadrzędnego z wieloma przebiegami audytu.
+- Awaryjne generowanie HTML z zachowanych CSV, gdy brak JSON.
+- Rozdzielenie eksportów CSV, JSON, HTML i diagnostyki; czytelny AuditStatus.txt.
+- Testy generatora na syntetycznych danych JSON/CSV/ZIP (do uruchomienia w PowerShell 5.1).
+- Niepełne wyniki są jednoznacznie oznaczone jako niezweryfikowane.
+
 ## v2.0 — 2026-10-13
 
 - Interaktywny, lokalny dashboard HTML z nawigacją między obszarami farmy.
