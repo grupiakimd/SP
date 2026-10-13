@@ -140,6 +140,7 @@ function OsFamily($v){
 }
 function TxtRow([object[]]$a){return '| '+(($a|ForEach-Object{[string]$_}) -join ' | ')+' |'}
 function Tbl([string]$title,[string[]]$head,[object[]]$arr,[int]$total){
+    if($null -eq $arr){$arr=@()}
     [void]$script:md.Add('### '+$title)
     [void]$script:md.Add(('Wszystkich: **{0}**, widocznych: **{1}**.' -f $total,$arr.Count))
     if($arr.Count -eq 0){[void]$script:md.Add('_Brak danych lub etap nie byl uruchomiony._');[void]$script:md.Add('');return}
