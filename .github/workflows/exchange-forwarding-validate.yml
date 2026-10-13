@@ -94,7 +94,7 @@ jobs:
               throw "Unexpected audit counts for $format"
             }
             $headers=@($data[0].PSObject.Properties.Name)
-            if($headers -notcontains 'Źródło przekierowania' -or $headers -notcontains 'Kopia w skrzynce'){
+            if($headers -notcontains 'Źródło przekierowania' -or $headers -notcontains 'Kopia w skrzynce' -or $headers -notcontains 'Kierunek'){
               throw "Missing expected Polish headers in $format"
             }
             if($format -eq 'Standard'){
@@ -117,13 +117,18 @@ jobs:
             if(@($data | Where-Object { $_.'Kopia w skrzynce' -eq 'Zależnie od działań reguły' }).Count -ne 3){
               throw "Inbox Rules keep-original field not localized in $format"
             }
+            if(@($data | Where-Object { $_.'Kierunek' -eq 'Zewnętrzne' }).Count -ne 3){throw "Wrong external count: $format"}
+            if(@($data | Where-Object { $_.'Kierunek' -eq 'Wewnętrzne' }).Count -ne 1){throw "Wrong internal count: $format"}
+            if(@($data | Where-Object { $_.'Kierunek' -eq 'Nieustalone' }).Count -ne 1){throw "Wrong unresolved count: $format"}
+            if(@($data | Where-Object { $_.'Przekierowanie do' -eq 'outside@example.org' }).Count -ne 1){throw "Mail contact target not resolved: $format"}
+            if($markup -notmatch 'onlyExternal' -or $markup -notmatch 'Przekierowania na zewnątrz:'){throw "Missing UI external filter: $format"}
             if($markup -notmatch 'Data wykonania skanu:' -or $markup -notmatch 'Status: Zakończono pomyślnie'){
               throw "Missing Polish report header in $format"
             }
             if($markup -match 'Mode: Test|selected databases only|Reguły ukryte sprawdź|TechnicalMechanism zachowuje'){
               throw "Obsolete guidance/metadata present in $format"
             }
-            Write-Host "PASS: $format report: 4 scanned / 3 forwarding mailboxes / 0 errors"
+            Write-Host "PASS: $format report: 4 scanned / 5 entries / 3 external / 1 unresolved / 0 errors"
           }
       - name: Validate example JSON
         shell: powershell
