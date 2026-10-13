@@ -15,8 +15,8 @@ function Resolve-Target($item) {
   if ($null -eq $item) { return '' }
   $s=([string]$item).Trim()
   if($s -match '(?i)^smtp:(.+)$'){$s=$Matches[1].Trim()}
-  if($s -match '^[^@\s<>]+@[^@\s<>]+$'){return $s}
-  if($s -match '<([^\s@<>]+@[^\s@<>]+)>'){return $Matches[1]}
+  if($s -match '<([^\s@<>]+@[^\s@<>]+)>'){$s=$Matches[1]}
+  # Resolve also SMTP-looking recipients: an internal-looking MailContact can deliver externally.
   # For MailContact and MailUser use the external delivery target if available.
   try{
     $r=Get-Recipient -Identity $s -ErrorAction Stop
