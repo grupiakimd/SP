@@ -73,6 +73,58 @@ jobs:
             }
             Write-Host "PASS: $mechanism -> $($label.Friendly)"
           }
+      - name: Offline integration - four test mailboxes, standard and full reports
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root=Join-Path $env:RUNNER_TEMP 'exchange-audit-fixture'
+          $fixture='Exchange/ForwardingAudit/tests/Smoke-Audit.ps1'
+          foreach($format in @('Standard','Full')){
+            & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $fixture -ReportFormat $format -OutputRoot $root
+            if($LASTEXITCODE -ne 0){throw "Fixture failed in $format : exit $LASTEXITCODE"}
+            $folder=Join-Path $root $format
+            $csv=Get-ChildItem -LiteralPath $folder -Filter 'Forwarding_*.csv' | Select-Object -First 1
+            $html=Get-ChildItem -LiteralPath $folder -Filter 'Forwarding_*.html' | Select-Object -First 1
+            $summary=Get-ChildItem -LiteralPath $folder -Filter 'Summary_*.json' | Select-Object -First 1
+            if(!$csv -or !$html -or !$summary){throw "Missing report files for $format"}
+            $data=@(Import-Csv -LiteralPath $csv.FullName -Delimiter ';' -Encoding UTF8)
+            $info=Get-Content -LiteralPath $summary.FullName -Raw -Encoding UTF8 | ConvertFrom-Json
+            $markup=Get-Content -LiteralPath $html.FullName -Raw -Encoding UTF8
+            if($data.Count -ne 3 -or $info.Scanned -ne 4 -or $info.WithForwarding -ne 3 -or $info.Errors -ne 0){
+              throw "Unexpected audit counts for $format"
+            }
+            $headers=@($data[0].PSObject.Properties.Name)
+            if($headers -notcontains 'Źródło przekierowania' -or $headers -notcontains 'Kopia w skrzynce'){
+              throw "Missing expected Polish headers in $format"
+            }
+            if($format -eq 'Standard'){
+              if($headers -contains 'Baza danych' -or $headers -contains 'Gdzie sprawdzić' -or $headers -contains 'Parametr techniczny'){
+                throw 'Standard CSV should not expose administrator-only columns'
+              }
+              if($headers.Count -ne 9){throw "Expected 9 standard columns, got $($headers.Count)"}
+            }else{
+              foreach($needed in @('Baza danych','Gdzie sprawdzić','Parametr techniczny','Identyfikator reguły','Oryginalny odbiorca (surowy)')){
+                if($headers -notcontains $needed){throw "Full report misses $needed"}
+              }
+              if($headers.Count -ne 14){throw "Expected 14 full columns, got $($headers.Count)"}
+            }
+            if(@($data | Where-Object { $_.Status -eq 'Wyłączone' }).Count -ne 1){
+              throw "Hidden, disabled forwarding rule not in $format"
+            }
+            if(@($data | Where-Object { $_.'Kopia w skrzynce' -eq 'Nie' }).Count -ne 1){
+              throw "Server mailbox forwarding keep-original field not localized in $format"
+            }
+            if(@($data | Where-Object { $_.'Kopia w skrzynce' -eq 'Zależnie od działań reguły' }).Count -ne 2){
+              throw "Inbox Rules keep-original field not localized in $format"
+            }
+            if($markup -notmatch 'Data wykonania skanu:' -or $markup -notmatch 'Status: Zakończono pomyślnie'){
+              throw "Missing Polish report header in $format"
+            }
+            if($markup -match 'Mode: Test|selected databases only|Reguły ukryte sprawdź|TechnicalMechanism zachowuje'){
+              throw "Obsolete guidance/metadata present in $format"
+            }
+            Write-Host "PASS: $format report: 4 scanned / 3 forwarding mailboxes / 0 errors"
+          }
       - name: Validate example JSON
         shell: powershell
         run: |
