@@ -25,5 +25,9 @@
     ],
     "CredentialFile": "smtp-credential.xml"
   },
-  "ExchangeServer": "exchange01.example.local"
+  "ExchangeServer": "exchange01.example.local",
+  "InternalDomains": [
+    "CHANGE_ME_FIRMA.PL",
+    "CHANGE_ME_FIRMA.LOCAL"
+  ]
 }
