@@ -1,3 +1,5 @@
 config.json
 Reports/
 *.log
+smtp-credential.xml
+*.credential.xml
