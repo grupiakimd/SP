@@ -9,15 +9,16 @@ Zestaw narzędzi **PowerShell 5.1** do inwentaryzacji istniejącej farmy SharePo
 | Wersja | Katalog | Zawartość |
 |---|---|---|
 | **v1.0** | [`v1/`](v1/) | Pierwotny kolektor PowerShell, raporty CSV/JSON, podstawowy HTML. |
-| **v2.0** | [`v2/`](v2/) | Kolektor oraz interaktywny dashboard HTML offline, wyszukiwanie, filtrowanie, stronicowanie i osobny generator HTML z istniejącego audytu. |
+| **v2.0** | [`v2/`](v2/) | Pierwszy interaktywny dashboard HTML offline; wersja archiwalna. |
+| **v2.1** | [`v2.1/`](v2.1/) | **Zalecana.** Naprawiony eksport HTML, automatyczne wykrywanie przebiegu, odzyskiwanie z CSV, testy offline. |
 
 ![Podgląd dashboardu v2](v2/docs/dashboard_preview.png)
 
-Wersje pozostają **oddzielne i nie są nadpisywane**. Przy kolejnych iteracjach dodawaj `v3/`, `v4/` itd. Zalecana do nowego audytu jest `v2`.
+Wersje pozostają **oddzielne i nie są nadpisywane**. **Używaj `v2.1`** — `v2` jest pozostawiona jako historia zmian.
 
-## Szybki start — v2
+## Szybki start — v2.1
 
-Skopiuj trzy pliki z [`v2/`](v2/) do jednego katalogu na serwerze APP/WFE SharePoint 2019:
+Skopiuj trzy pliki z [`v2.1/`](v2.1/) do jednego katalogu na serwerze APP/WFE SharePoint 2019:
 
 - `Invoke-SP2019ReadinessAudit.ps1`
 - `New-SPSEDashboard.ps1`
@@ -27,15 +28,15 @@ Uruchom **Windows PowerShell 5.1 (x64)** z uprawnieniami do farmy SharePoint (i 
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
-& "C:\Scripts\SPSEAudit\Invoke-SP2019ReadinessAudit.ps1" -OutputRoot "C:\SP_Audit"
+& "C:\Scripts\SPSEAudit\v2.1\Invoke-SP2019ReadinessAudit.ps1" -OutputRoot "C:\SP_Audit"
 ```
 
-Następnie otwórz `SPSE_Readiness_Report.html` z katalogu przebiegu. Więcej szczegółów: [`v2/README_START_HERE.txt`](v2/README_START_HERE.txt).
+Następnie otwórz `SPSE_Readiness_Report.html` z katalogu przebiegu. Więcej szczegółów: [`v2.1/README.md`](v2.1/README.md).
 
 **Odtworzenie dashboardu z istniejącego audytu**, bez ponownego skanowania farmy:
 
 ```powershell
-& "C:\Scripts\SPSEAudit\New-SPSEDashboard.ps1" -InputPath "C:\SP_Audit\SP2019_Audit_NAZWA_SERWERA_DATA"
+& "C:\Scripts\SPSEAudit\v2.1\New-SPSEDashboard.ps1" -InputPath "C:\SP_Audit"
 ```
 
 ## Bezpieczeństwo i ograniczenia
@@ -63,6 +64,12 @@ SP/
     ├── PRZYKLAD_DASHBOARD_DEMO.html
     ├── README_START_HERE.txt
     └── docs/dashboard_preview.png
+└── v2.1/
+    ├── Invoke-SP2019ReadinessAudit.ps1
+    ├── New-SPSEDashboard.ps1
+    ├── dashboard_template.html
+    ├── README.md
+    └── tests/Test-Dashboard.ps1
 ```
 
 Repozytorium publiczne nie oznacza automatycznie udzielenia licencji open-source. Licencję można dobrać później, jeśli projekt ma umożliwiać dalsze wykorzystanie przez innych.
