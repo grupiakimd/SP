@@ -1,4 +1,4 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 [CmdletBinding()]
 param(
  [string]$ConfigPath = (Join-Path $PSScriptRoot 'config.json'),
@@ -18,12 +18,35 @@ function Resolve-Target($item) {
   try { $r=Get-Recipient -Identity $s -ErrorAction Stop; if($r.PrimarySmtpAddress){return [string]$r.PrimarySmtpAddress} } catch {}
   return $s
 }
+function Get-MechanismDetails([string]$Mechanism) {
+  # Do not claim a rule was created in Outlook: it may also be created via OWA or Exchange PowerShell.
+  switch ($Mechanism) {
+    'InboxRule.ForwardTo' {
+      return @{ Friendly='Outlook / OWA - reguła: Prześlij dalej'; Location='Outlook/OWA: Reguły skrzynki; PowerShell: Get-InboxRule -Mailbox <adres> -IncludeHidden' }
+    }
+    'InboxRule.RedirectTo' {
+      return @{ Friendly='Outlook / OWA - reguła: Przekieruj'; Location='Outlook/OWA: Reguły skrzynki; PowerShell: Get-InboxRule -Mailbox <adres> -IncludeHidden' }
+    }
+    'InboxRule.ForwardAsAttachmentTo' {
+      return @{ Friendly='Outlook / OWA - reguła: Jako załącznik'; Location='Outlook/OWA: Reguły skrzynki; PowerShell: Get-InboxRule -Mailbox <adres> -IncludeHidden' }
+    }
+    'Mailbox.ForwardingAddress' {
+      return @{ Friendly='Exchange (serwer) - ForwardingAddress'; Location='EAC: Odbiorcy > Skrzynki > Funkcje skrzynki > Przepływ poczty > Szczegóły; PowerShell: Get-Mailbox' }
+    }
+    'Mailbox.ForwardingSmtpAddress' {
+      return @{ Friendly='Exchange (serwer) - ForwardingSmtpAddress'; Location='EAC: Odbiorcy > Skrzynki > Funkcje skrzynki > Przepływ poczty > Szczegóły; PowerShell: Get-Mailbox' }
+    }
+    default { return @{ Friendly=$Mechanism; Location='Sprawdź konfigurację Exchange PowerShell' } }
+  }
+}
 function Finding($mb,$mechanism,$destination,$status,$rule='',$details='',$keep='') {
+  $info=Get-MechanismDetails $mechanism
   $script:records.Add([pscustomobject][ordered]@{
     Database=[string]$mb.Database; Mailbox=[string]$mb.DisplayName
     Address=[string]$mb.PrimarySmtpAddress; Type=[string]$mb.RecipientTypeDetails
-    Mechanism=$mechanism; Destination=(Resolve-Target $destination)
-    Status=$status; Rule=$rule; Details=$details; KeepOriginal=$keep
+    Mechanism=[string]$info.Friendly; Destination=(Resolve-Target $destination)
+    Status=$status; WhereToCheck=[string]$info.Location; TechnicalMechanism=$mechanism
+    Rule=$rule; Details=$details; KeepOriginal=$keep
   })
 }
 function ErrorRecord($scope,$identity,$reason) {
@@ -112,7 +135,7 @@ foreach($mb in $scanList){
     }catch{ErrorRecord 'InboxRule' ([string]$mb.PrimarySmtpAddress) $_.Exception.Message}
 }
 $rows=@($records.ToArray() | Sort-Object Address,Mechanism,Destination)
-$columns=@('Database','Mailbox','Address','Type','Mechanism','Destination','Status','Rule','Details','KeepOriginal')
+$columns=@('Database','Mailbox','Address','Type','Mechanism','Destination','Status','WhereToCheck','TechnicalMechanism','Rule','Details','KeepOriginal')
 $csv=Join-Path $folder "Forwarding_$stamp.csv"
 if($rows.Count){$rows | Export-Csv -Path $csv -Delimiter ';' -Encoding UTF8 -NoTypeInformation}
 else{('"' + ($columns -join '";"') + '"') | Set-Content $csv -Encoding UTF8}
@@ -134,7 +157,8 @@ th,td{padding:9px 12px;border-bottom:1px solid #dbe3ec;text-align:left}
 th{background:#eaf0f7}tr:hover{background:#eef5ff}</style></head><body><main>
 <h1>Exchange forwarding audit</h1><p>$(Encode $stamp) | Status: $(Encode $state) | Mode: $(Encode $mode) | selected databases only</p>
 <section><span>Scanned: $scanned</span><span>Mailboxes with forwarding: $unique</span><span>Forwarding entries: $($rows.Count)</span><span>Errors: $($problems.Count)</span></section>
-<p>Only mailboxes with configured forwarding appear below. Disabled rules are marked. Details may include rule conditions and exceptions.</p>
+<p>Wyświetlane są tylko skrzynki z przekierowaniami. Reguły wyłączone mają status Disabled. Outlook/OWA oznacza regułę skrzynki (nie dowodzi, w jakim kliencie ją utworzono). Reguły ukryte sprawdź przez Get-InboxRule -IncludeHidden.</p>
+<p><strong>Gdzie szukać?</strong> Exchange (serwer): EAC &gt; Odbiorcy &gt; Skrzynki &gt; Funkcje skrzynki &gt; Przepływ poczty &gt; Szczegóły. Outlook/OWA: Reguły skrzynki. W kolumnie WhereToCheck jest podpowiedź; TechnicalMechanism zachowuje oryginalną nazwę pola.</p>
 <input id="q" type="search" placeholder="Filter results"><div class="scroll"><table><thead><tr>$thead</tr></thead><tbody>$body</tbody></table></div>
 <script>document.getElementById('q').addEventListener('input',function(){let q=this.value.toLowerCase();document.querySelectorAll('tbody tr').forEach(r=>r.hidden=!r.textContent.toLowerCase().includes(q))})</script>
 </main></body></html>
