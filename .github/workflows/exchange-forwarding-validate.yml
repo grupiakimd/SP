@@ -40,6 +40,39 @@ jobs:
             }
             Write-Host "PASS: $($script.Name)"
           }
+      - name: Test friendly source mappings without Exchange connectivity
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $path = 'Exchange/ForwardingAudit/Audit-ExchangeForwarding.ps1'
+          $tokens = $null
+          $errorsFound = $null
+          $ast = [System.Management.Automation.Language.Parser]::ParseFile($path, [ref]$tokens, [ref]$errorsFound)
+          if ($errorsFound.Count) { throw 'Audit script does not parse' }
+          $fn = $ast.Find({
+            param($node)
+            $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and
+            $node.Name -eq 'Get-MechanismDetails'
+          }, $true)
+          if (-not $fn) { throw 'Get-MechanismDetails is missing' }
+          . ([scriptblock]::Create($fn.Extent.Text))
+          $cases = @{
+            'Mailbox.ForwardingAddress' = 'Exchange (serwer)'
+            'Mailbox.ForwardingSmtpAddress' = 'Exchange (serwer)'
+            'InboxRule.ForwardTo' = 'Outlook / OWA'
+            'InboxRule.RedirectTo' = 'Outlook / OWA'
+            'InboxRule.ForwardAsAttachmentTo' = 'Outlook / OWA'
+          }
+          foreach ($mechanism in $cases.Keys) {
+            $label = Get-MechanismDetails $mechanism
+            if ($label.Friendly -notlike "$($cases[$mechanism])*") {
+              throw "Incorrect display label for $mechanism : $($label.Friendly)"
+            }
+            if ([string]::IsNullOrWhiteSpace($label.Location)) {
+              throw "Missing inspection hint for $mechanism"
+            }
+            Write-Host "PASS: $mechanism -> $($label.Friendly)"
+          }
       - name: Validate example JSON
         shell: powershell
         run: |
