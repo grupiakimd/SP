@@ -1,99 +1,86 @@
-# Exchange Server SE: forwarding audit
+# Exchange Server SE — audyt przekierowań poczty
 
-Independent tool, unrelated to the SharePoint versions in this repository.
+Niezależny moduł repozytorium `SP`. Działa **tylko do odczytu** na stacji/serwerze Windows w domenie AD, poza serwerem Exchange. Raporty HTML i CSV zawierają **wyłącznie skrzynki z wykrytym przekierowaniem**.
 
-## Scope
+## Zakres
 
-Scans only UserMailbox and SharedMailbox in exactly five allowlisted mailbox databases. Audits administrative mailbox forwarding (ForwardingAddress and ForwardingSmtpAddress, plus DeliverToMailboxAndForward) and Outlook/OWA Inbox Rules (ForwardTo, RedirectTo, ForwardAsAttachmentTo), including hidden and disabled rules. No Transport Rules. No message content. Output tables show **only detected forwarding**.
+- UserMailbox i SharedMailbox tylko w bazach wskazanych w `config.json`.
+- Ustawienia skrzynek: `ForwardingAddress`, `ForwardingSmtpAddress` oraz `DeliverToMailboxAndForward`.
+- Reguły: `Get-InboxRule -IncludeHidden`, akcje `ForwardTo`, `RedirectTo`, `ForwardAsAttachmentTo`, także reguły wyłączone i ukryte widoczne dla Exchange PowerShell.
+- **Nie** skanuje Transport Rules ani treści wiadomości i nie zmienia ustawień.
 
-## Installation
+## Dwa niezależne znaczenia „Full”
 
-1. Copy this folder to a secured **domain-joined Windows server** with Windows PowerShell 5.1. Exchange management tools are **not required**; the script imports a Kerberos-authenticated remote Exchange PowerShell session.
-2. Copy config.example.json to config.json locally and replace ALL FIVE database placeholders with actual mailbox database names. The script deliberately fails when placeholders remain.
-3. Run as an Exchange RBAC account authorized to read mailboxes and Inbox Rules. Test from Exchange Management Shell first.
-4. Example: powershell.exe -NoProfile -File "C:\ExchangeAudit\Audit-ExchangeForwarding.ps1"
-5. To register a daily task at 06:00, run elevated Windows PowerShell: .\Register-ScheduledTask.ps1 -ScriptDirectory C:\ExchangeAudit -At 06:00 -User 'DOMAIN\svc-exchange-audit'
+**Zakres skrzynek** określa `Mode` w lokalnym `config.json`:
+- `"Mode": "Test"`: tylko skrzynki z `TestMailboxes` (albo z `-Mailboxes`), i tylko jeśli należą do baz z `Databases`. Do testu wystarczy wskazać jedną lub więcej właściwych baz.
+- `"Mode": "Full"`: UserMailbox i SharedMailbox w **pięciu** bazach z `Databases`. Lista testowa nie jest wtedy używana.
 
-Scheduled execution connects to `http://<ExchangeServer>/PowerShell/` using `New-PSSession -ConfigurationName Microsoft.Exchange -Authentication Kerberos` and imports cmdlets. Set `ExchangeServer` to the Exchange server FQDN in config.json. This is a separate connection from SMTP TCP/587. The Microsoft-supported Kerberos endpoint uses HTTP with Kerberos payload encryption; do not enable Basic or TrustedHosts to make it work. It prompts for task-account credentials at registration; credentials are not kept in code or config. The scheduled-task domain account needs Exchange RBAC permissions, WinRM client/remote PowerShell prerequisites, Kerberos and DNS connectivity, and access to the Exchange PowerShell virtual directory (typically TCP/80). Do not confuse this port with SMTP submission on TCP/587.
+**Szczegółowość raportu** określa przełącznik **`-Full`**:
+- Bez niego: 9 kolumn — Skrzynka, Adres, Typ, Źródło przekierowania, Przekierowanie do, Status, Nazwa reguły, Warunki i wyjątki, Kopia w skrzynce.
+- Z nim: 14 kolumn — dodatkowo Baza danych, Gdzie sprawdzić, Parametr techniczny, Identyfikator reguły, Oryginalny odbiorca (surowy).
 
-## Reports
+**`-Full` nie zmienia zakresu skanowania.** Można przygotować szczegółowy raport dla czterech skrzynek testowych.
 
-Saved locally under Reports (or configured OutputDirectory):
-- Forwarding_timestamp.html: browser-filterable table, only positive findings
-- Forwarding_timestamp.csv: matching table, UTF-8, semicolon separator
-- Summary_timestamp.json: scanned/forwarding/error counts and COMPLETE vs PARTIAL
-- Errors_timestamp.csv: only on read failures, outside the main report
+## Konfiguracja i uruchomienie
 
-Exit code 0 means scan completed, 2 means incomplete (check diagnostics), nonzero exceptions indicate startup failure. Do not treat a partial or failed audit as showing no forwarding.
+Wymagania: Windows PowerShell 5.1, komputer dołączony do domeny AD, konto z Exchange RBAC uprawnionym do odczytu skrzynek i reguł oraz dostęp do Exchange Remote PowerShell. Nie trzeba instalować Exchange Management Tools. Skrypt używa Kerberos i endpointu `http://<ExchangeServer>/PowerShell/` (zwykle TCP 80). Port SMTP 587 jest osobny.
 
-## Limits and safety
+1. Pobierz folder do `C:\Skrypty\exchange_forward`.
+2. Skopiuj `config.example.json` do **lokalnego** `config.json`.
+3. Ustaw `ExchangeServer` (np. `exmb1`), rzeczywiste bazy w `Databases` i cztery adresy w `TestMailboxes`; pozostaw `Mode=Test`.
+4. Uruchom w Windows PowerShell 5.1:
 
-Get-InboxRule covers Exchange-visible Inbox Rules; client-only Outlook behavior or nonstandard MAPI changes may not be fully represented. Descriptions show conditions/exceptions, but script does not evaluate them or confirm message delivery. Targets are resolved to primary SMTP when feasible; otherwise the raw Exchange identifier remains. Keep output restricted to administrators: email addresses, redirect targets and rule descriptions are sensitive. **Never commit reports or real config.json to this public repository.** No Exchange modifications are performed.
+       cd C:\Skrypty\exchange_forward
+       .\Audit-ExchangeForwarding.ps1 -ExchangeServer exmb1 -NoEmail -OpenReport
 
+5. Administracyjny raport z **tych samych** skrzynek:
 
-## Test mode: four specific mailboxes
+       .\Audit-ExchangeForwarding.ps1 -ExchangeServer exmb1 -Full -NoEmail -OpenReport
 
-The updated config.example.json defaults to Mode=Test and contains four TestMailboxes placeholders. Create your **local** config.json and replace the placeholder mailbox addresses with actual identities, and list their allowed Exchange databases in Databases. Unlike Full, Test does not require five configured databases; the specified mailboxes must belong to one of those allowed databases. A mailbox outside the allowlist or a missing mailbox is recorded as a **PARTIAL** audit error, never silently included.
+6. Bez zmiany pliku testowego możesz ręcznie podać adresy:
 
-Run the configured test set:
+       .\Audit-ExchangeForwarding.ps1 -ExchangeServer exmb1 -Mailboxes 'test1@firma.pl','test2@firma.pl','test3@firma.pl','test4@firma.pl' -NoEmail -OpenReport
 
-    powershell.exe -NoProfile -File C:\ExchangeAudit\Audit-ExchangeForwarding.ps1
+`-NoEmail` wyłącza wysyłkę wyłącznie w bieżącym uruchomieniu. `-OpenReport` otwiera HTML w przeglądarce — używaj tylko interaktywnie, nie w Harmonogramie zadań.
 
-Override test selection directly from PowerShell (while Mode=Test):
+## Interpretacja raportu
 
-    .\Audit-ExchangeForwarding.ps1 -Mailboxes 'user1@company.pl','shared1@company.pl','user2@company.pl','shared2@company.pl'
+- **Aktywne**: skonfigurowane przekierowanie skrzynki lub aktywna reguła.
+- **Wyłączone**: skonfigurowana, ale wyłączona reguła.
+- **Kopia w skrzynce — Tak / Nie**: ustawienie `DeliverToMailboxAndForward` przekierowania skonfigurowanego na skrzynce Exchange.
+- **Kopia w skrzynce — Zależnie od działań reguły**: nie zakładamy, że wiadomość zostaje, bo reguła może mieć dodatkowe akcje.
+- **Outlook / OWA** oznacza typ reguły; nie jest dowodem, czy utworzył ją Outlook, OWA czy administrator przez PowerShell.
+- **Wykryte przekierowania**: liczba pozycji/odbiorców, może być większa od liczby skrzynek.
+- **Błędy odczytu**: np. brak uprawnień, nieistniejąca skrzynka lub niewłaściwa baza. Przy błędach raport ma status **Niepełny**.
 
-For a full scan, change Mode to Full and provide exactly five valid databases. Full ignores TestMailboxes in config. Do not switch to Full until test findings are reviewed.
+Ukryte reguły ujawniane przez `Get-InboxRule -IncludeHidden` są automatycznie sprawdzane. To jednak nie gwarantuje wykrycia nietypowych manipulacji MAPI, reguł działających wyłącznie po stronie klienta ani faktycznego dostarczenia przekierowanej wiadomości. Skrypt pokazuje warunki i wyjątki, ale nie wykonuje ich logicznej symulacji.
 
-## SMTP report delivery
+## Raporty
 
-Set Email.Enabled=true and configure Host, Port, From, To, CredentialFile, UseStartTls=true in your local config.json. This implementation uses Windows PowerShell 5.1 System.Net.Mail.SmtpClient with authenticated **STARTTLS**, conventionally TCP 587; it does **not** support implicit TLS on port 465. Verify that your SMTP server accepts AUTH LOGIN/PLAIN (or another supported authentication method) and allows sending as configured From. Certificates must validate; this tool does not disable verification. Some servers that only accept OAuth cannot use this method.
+`Reports` (lub folder ustawiony w `OutputDirectory`):
+- `Forwarding_YYYYMMDD_HHMMSS.html` — interaktywny HTML z filtrem, po polsku.
+- `Forwarding_YYYYMMDD_HHMMSS.csv` — te same kolumny, UTF-8 i separator średnik.
+- `Summary_YYYYMMDD_HHMMSS.json` — statystyki oraz techniczny stan COMPLETE/PARTIAL.
+- `Errors_YYYYMMDD_HHMMSS.csv` — tworzony tylko gdy wystąpi błąd odczytu.
 
-Under the **same Windows identity on the same machine** that will run the Task Scheduler job, run:
+Kod wyjścia: 0 = kompletny audyt; 2 = niepełny audyt; 3 = błąd wysyłki SMTP. Awaria uruchomienia/połączenia również uniemożliwia uznanie audytu za kompletny.
+
+## SMTP AUTH i Harmonogram zadań
+
+W lokalnym `config.json` uzupełnij `Email.Enabled=true`, `Host`, `Port=587`, `UseStartTls=true`, `From`, `To`, `CredentialFile`. Exchange musi udostępniać rzeczywiste uwierzytelnienie SMTP AUTH/STARTTLS i certyfikat zaufany dla Windows. Sam otwarty port 587 nie wystarczy; implicit TLS 465 i OAuth nie są obsługiwane w tym skrypcie.
+
+**Pod tym samym kontem Windows, które uruchomi zadanie, na tym samym komputerze** wykonaj:
 
     .\Set-SmtpCredential.ps1
 
-This prompts for SMTP login/password and writes a Windows DPAPI-protected smtp-credential.xml. Protect that file with NTFS ACLs. It is not portable to another Windows account or computer. If using a service account for the task, provision the credential while logged in as that account. Do not publish real addresses, credentials, config or reports.
+Plik `smtp-credential.xml` jest szyfrowany Windows DPAPI dla tożsamości, która go utworzyła. Zabezpiecz ACL folderu. Następnie zarejestruj zadanie (przykład na 06:00):
 
-The email contains the HTML report, CSV findings, JSON summary and (on a partial audit) CSV error diagnostics. SMTP send failure returns exit code 3. Reports remain saved locally even if sending fails. SMTP is optional; disabled by default. Review the SMTP server logs and actual receipt during initial verification.
+    .\Register-ScheduledTask.ps1 -ScriptDirectory C:\Skrypty\exchange_forward -At 06:00 -User 'DOMENA\svc-exchange-audit'
 
-### Important operational note
+Harmonogram uruchamia skrypt według lokalnego `config.json`, bez `-OpenReport`; przy włączonym SMTP wysyła HTML, CSV, JSON i ewentualnie diagnostykę.
 
-A test is still a live read-only interrogation of real Exchange configuration, but it does not modify mailboxes. Neither this version nor scheduled email have been validated against your Exchange SE deployment.
+## Bezpieczeństwo i weryfikacja
 
-## Running from a separate Windows server
+Repozytorium jest publiczne. **Nie publikuj** rzeczywistego `config.json`, plików DPAPI i raportów zawierających nazwy skrzynek, adresy przekierowań lub treści reguł. Ogranicz dostęp NTFS do katalogu wynikowego.
 
-- Set `ExchangeServer` in config.json to the Exchange FQDN (not an HTTP URL), and run under a domain account authorized for Exchange remote PowerShell and mailbox rules.
-- Keep Mode=Test until the four selected mailboxes are checked. Test and Full both require their targets to belong to the allowed Databases.
-- For scheduled execution the same Windows identity must have previously created `smtp-credential.xml` on this *execution host* using `Set-SmtpCredential.ps1`. That credential is for SMTP only, not the Exchange Kerberos session.
-- The host must reach Exchange Remote PowerShell (commonly TCP 80 to /PowerShell/) and SMTP submission TCP 587. Confirm SMTP STARTTLS + SMTP AUTH actually work for the account; port accessibility alone is not proof.
-- A remote Exchange session is removed after successful normal execution. On fatal termination, PowerShell cleans up at process end.
-
-## Manual audit without email
-
-Even if Email.Enabled=true in config.json, override delivery for one run:
-
-    .\Audit-ExchangeForwarding.ps1 -NoEmail -OpenReport
-
-`-NoEmail` skips SMTP; `-OpenReport` opens the locally generated HTML in the default browser (use interactively, not in unattended Scheduled Tasks). Without `-OpenReport`, files are still saved locally. Scheduled Tasks use the config default unless explicitly supplied `-NoEmail`.
-
-## Choosing the remote Exchange server
-
-Set `ExchangeServer` in local `config.json` to the actual FQDN, e.g. `exch01.corp.contoso.local` (replace this example with your own server). No scheme or /PowerShell/ path is needed. The `exchange01.example.local` value is deliberately blocked as a placeholder.
-
-For a one-time manual test you can override the configuration with:
-
-    .\Audit-ExchangeForwarding.ps1 -ExchangeServer 'exch01.corp.contoso.local' -NoEmail -OpenReport
-
-From the execution host, diagnose network reachability with `Test-NetConnection <Exchange-FQDN> -Port 80`. Ensure the scheduled task account has permissions for remote Exchange PowerShell and Kerberos. SMTP 587 is separate and is used only when email is enabled.
-
-## Reading the forwarding source (friendly names)
-
-The HTML and CSV reports show an administrator-friendly **Mechanism** value and two additional fields:
-- `Mechanism`: `Outlook / OWA - reguła: ...` for Inbox Rules, or `Exchange (serwer) - ForwardingAddress/ForwardingSmtpAddress` for mailbox-level forwarding.
-- `WhereToCheck`: how to locate the setting. Server forwarding: Exchange EAC > Recipients > Mailboxes > Mailbox Features > Mail Flow > View details, or Exchange Management Shell `Get-Mailbox`. Inbox Rules: Outlook/OWA rules or `Get-InboxRule -Mailbox <address> -IncludeHidden` in Exchange PowerShell.
-- `TechnicalMechanism`: unchanged Exchange property/action name, e.g. `InboxRule.ForwardTo`.
-
-**Accuracy:** Inbox Rules are server-stored and may have been created via Outlook, OWA or administrator PowerShell. The label is a category, **not** proof of which application or person created the rule. Hidden rules may not be visible in Outlook/OWA; use Exchange PowerShell. ForwardingAddress can resolve to a mail contact with an external address, so it does not necessarily mean internal delivery.
-
-The .ps1 file is distributed as UTF-8 with BOM for correct Polish text under Windows PowerShell 5.1. The JSON config is read explicitly as UTF-8.
+GitHub Actions uruchamia parser Windows PowerShell 5.1 oraz testy offline standardowego i administracyjnego raportu na czterech sztucznych skrzynkach, w tym ukrytej/wyłączonej regule przekierowania. Testy **nie zastępują** sprawdzenia działania na rzeczywistym Exchange SE.
