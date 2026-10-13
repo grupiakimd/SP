@@ -52,7 +52,7 @@ $script:Data = @{}
 $script:Issues = New-Object System.Collections.ArrayList
 $script:Errors = New-Object System.Collections.ArrayList
 $script:Meta = [ordered]@{
-    AuditVersion = '2.2.0'; Started = $script:Started.ToString('s'); Collector = $env:COMPUTERNAME
+    AuditVersion = '2.2.1'; Started = $script:Started.ToString('s'); Collector = $env:COMPUTERNAME
     Account = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
     ReadOnly = $true; DeepWebScan = [bool]$DeepWebScan; MaxWebs = $MaxWebs
     SQLRequested = (-not $SkipSQL); RemoteOSRequested = (-not $SkipRemoteOS)
@@ -837,13 +837,32 @@ TrySection 'Export_Diagnostics' {
     ) | Set-Content -LiteralPath (Join-Path $base 'AuditStatus.txt') -Encoding UTF8
 }
 
-# Ujawnianie danych jest opt-in; raport MD nie trafia do archiwum z surowymi danymi.
+# Ujawnianie danych jest opt-in; raport MD jest zawsze POZA katalogiem archiwizowanym do ZIP.
+# Jawna lokalizacja i stan pomagaja odroznic powodzenie od ostrzezenia TrySection.
 if ($ShareableReport) {
+    $shareableFile = Join-Path $OutputRoot ("SP_Audit_SHAREABLE_{0}.md" -f $stamp)
     TrySection 'Export_Shareable_MD' {
         $sanitizer = Join-Path $PSScriptRoot 'New-SPSEShareableAudit.ps1'
         if (-not (Test-Path -LiteralPath $sanitizer -PathType Leaf)) { throw 'Brak New-SPSEShareableAudit.ps1.' }
-        & $sanitizer -InputPath $base
+        & $sanitizer -InputPath $base -OutputPath $shareableFile -ErrorAction Stop
+        if (-not (Test-Path -LiteralPath $shareableFile -PathType Leaf)) { throw 'Generator zakonczyl prace bez pliku MD.' }
     }
+    if (Test-Path -LiteralPath $shareableFile -PathType Leaf) {
+        Write-Host ("[MD: OK] {0}" -f $shareableFile) -ForegroundColor Green
+        $mdStatus = "ShareableMarkdown: OK"
+    } else {
+        Write-Warning '[MD: FAILED] Raport nie powstal. Mozesz ponowic generator na zapisanych wynikach bez skanowania farmy.'
+        $mdStatus = "ShareableMarkdown: FAILED"
+    }
+    # Export_Diagnostics powstal przed eksportem MD; dopisz jego wynik i odswiez bledy.
+    try {
+        Add-Content -LiteralPath (Join-Path $base 'AuditStatus.txt') -Value $mdStatus -Encoding UTF8
+        $script:Errors.ToArray() | Export-Csv -LiteralPath (Join-Path $base 'CollectionErrors.csv') -NoTypeInformation -Encoding UTF8 -Delimiter ';'
+        $script:Meta.CollectionErrors = $script:Errors.Count
+        $script:Meta | ConvertTo-Json -Depth 8 | Out-File -LiteralPath (Join-Path $base 'AuditMetadata.json') -Encoding UTF8
+    } catch { Note 'ShareableStatus' $_.Exception.Message }
+} else {
+    Write-Host '[MD: SKIPPED] Uzyj -ShareableReport, aby dodatkowo wygenerowac plik MD.' -ForegroundColor DarkYellow
 }
 
 try {
