@@ -3,6 +3,7 @@ SP2019_Audit_*/
 SP2019_Audit_*.zip
 **/FullInventory.json
 **/AuditMetadata.json
+**/AuditStatus.txt
 **/SPSE_Readiness_Report.html
 **/CollectionErrors.csv
 **/MigrationRisks.csv
