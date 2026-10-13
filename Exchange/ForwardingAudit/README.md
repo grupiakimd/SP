@@ -16,8 +16,8 @@ Niezależny moduł repozytorium `SP`. Działa **tylko do odczytu** na stacji/ser
 - `"Mode": "Full"`: UserMailbox i SharedMailbox w **pięciu** bazach z `Databases`. Lista testowa nie jest wtedy używana.
 
 **Szczegółowość raportu** określa przełącznik **`-Full`**:
-- Bez niego: 9 kolumn — Skrzynka, Adres, Typ, Źródło przekierowania, Przekierowanie do, Status, Nazwa reguły, Warunki i wyjątki, Kopia w skrzynce.
-- Z nim: 14 kolumn — dodatkowo Baza danych, Gdzie sprawdzić, Parametr techniczny, Identyfikator reguły, Oryginalny odbiorca (surowy).
+- Bez niego: 10 kolumn — Skrzynka, Adres, Typ, Źródło przekierowania, Przekierowanie do, Kierunek, Status, Nazwa reguły, Warunki i wyjątki, Kopia w skrzynce.
+- Z nim: 15 kolumn — dodatkowo Baza danych, Gdzie sprawdzić, Parametr techniczny, Identyfikator reguły, Oryginalny odbiorca (surowy).
 
 **`-Full` nie zmienia zakresu skanowania.** Można przygotować szczegółowy raport dla czterech skrzynek testowych.
 
@@ -27,7 +27,7 @@ Wymagania: Windows PowerShell 5.1, komputer dołączony do domeny AD, konto z Ex
 
 1. Pobierz folder do `C:\Skrypty\exchange_forward`.
 2. Skopiuj `config.example.json` do **lokalnego** `config.json`.
-3. Ustaw `ExchangeServer` (np. `exmb1`), rzeczywiste bazy w `Databases` i cztery adresy w `TestMailboxes`; pozostaw `Mode=Test`.
+3. Ustaw `ExchangeServer` (np. `exmb1`), rzeczywiste bazy w `Databases` i cztery adresy w `TestMailboxes`; pozostaw `Mode=Test`. Koniecznie uzupełnij też `InternalDomains` rzeczywistymi domenami SMTP Twojej organizacji.
 4. Uruchom w Windows PowerShell 5.1:
 
        cd C:\Skrypty\exchange_forward
@@ -51,9 +51,27 @@ Wymagania: Windows PowerShell 5.1, komputer dołączony do domeny AD, konto z Ex
 - **Kopia w skrzynce — Zależnie od działań reguły**: nie zakładamy, że wiadomość zostaje, bo reguła może mieć dodatkowe akcje.
 - **Outlook / OWA** oznacza typ reguły; nie jest dowodem, czy utworzył ją Outlook, OWA czy administrator przez PowerShell.
 - **Wykryte przekierowania**: liczba pozycji/odbiorców, może być większa od liczby skrzynek.
+- **Przekierowania na zewnątrz**: liczba pozycji z celem SMTP spoza listy `InternalDomains` (wliczane są również reguły wyłączone).
+- **Kierunek**: `Wewnętrzne`, `Zewnętrzne` lub `Nieustalone`. Nieznany adres nigdy nie zostaje automatycznie uznany za wewnętrzny lub zewnętrzny.
 - **Błędy odczytu**: np. brak uprawnień, nieistniejąca skrzynka lub niewłaściwa baza. Przy błędach raport ma status **Niepełny**.
 
 Ukryte reguły ujawniane przez `Get-InboxRule -IncludeHidden` są automatycznie sprawdzane. To jednak nie gwarantuje wykrycia nietypowych manipulacji MAPI, reguł działających wyłącznie po stronie klienta ani faktycznego dostarczenia przekierowanej wiadomości. Skrypt pokazuje warunki i wyjątki, ale nie wykonuje ich logicznej symulacji.
+
+## Domeny wewnętrzne i filtr zewnętrznych przekierowań
+
+W lokalnym `config.json` dodaj:
+
+~~~json
+"InternalDomains": ["firma.pl", "firma.local", "druga-domena.pl"]
+~~~
+
+Wpisz **wszystkie domeny SMTP obsługiwane wewnętrznie**, także domeny alternatywne. Skrypt wymaga tej listy i nie rozpocznie skanowania, jeżeli jej brakuje. Porównuje domeny w sposób nieczuły na wielkość liter, **po pełnej nazwie**, a nie przez fragment tekstu. Poddomeny trzeba dopisać osobno.
+
+Skrzynki i reguły nadal są zbierane w pełnym zakresie. W HTML obok pola wyszukiwania jest filtr **Tylko przekierowania zewnętrzne**. Filtr nie zmienia CSV ani danych audytu. Licznik przekierowań zewnętrznych zastępuje licznik błędów w widocznym nagłówku.
+
+Skrypt rozwiązuje obiekty MailContact/MailUser na ich `ExternalEmailAddress`, jeśli Exchange zwróci taki adres; dzięki temu kontakt o wewnętrznym aliasie prowadzący na zewnątrz zostanie wykryty. Gdy nie można ustalić adresu SMTP celu, wynik ma kierunek `Nieustalone` — nie jest ukrywany przez główny raport. Skrypt nie analizuje docelowych członków grup dystrybucyjnych ani dalszych przekierowań kaskadowych. Pełną listę zaakceptowanych domen możesz zweryfikować na serwerze Exchange poleceniem `Get-AcceptedDomain`, ale nie każda domena zaakceptowana musi oznaczać lokalne miejsce ostatecznego dostarczenia.
+
+Błędy odczytu **nadal są zapisywane** w `Errors_*.csv`, a status `Niepełny` pozostaje widoczny — usunięcie kafelka z liczbą błędów nie oznacza ignorowania problemów audytu.
 
 ## Raporty
 
