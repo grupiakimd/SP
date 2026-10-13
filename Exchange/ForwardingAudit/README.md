@@ -8,13 +8,13 @@ Scans only UserMailbox and SharedMailbox in exactly five allowlisted mailbox dat
 
 ## Installation
 
-1. Copy this folder onto a secured Exchange SE server (Windows PowerShell 5.1 and Exchange Management Tools).
+1. Copy this folder to a secured **domain-joined Windows server** with Windows PowerShell 5.1. Exchange management tools are **not required**; the script imports a Kerberos-authenticated remote Exchange PowerShell session.
 2. Copy config.example.json to config.json locally and replace ALL FIVE database placeholders with actual mailbox database names. The script deliberately fails when placeholders remain.
 3. Run as an Exchange RBAC account authorized to read mailboxes and Inbox Rules. Test from Exchange Management Shell first.
 4. Example: powershell.exe -NoProfile -File "C:\ExchangeAudit\Audit-ExchangeForwarding.ps1"
 5. To register a daily task at 06:00, run elevated Windows PowerShell: .\Register-ScheduledTask.ps1 -ScriptDirectory C:\ExchangeAudit -At 06:00 -User 'DOMAIN\svc-exchange-audit'
 
-Scheduled execution bootstraps RemoteExchange.ps1 / Connect-ExchangeServer -Auto if Exchange cmdlets are unavailable. It prompts for task-account credentials at registration; credentials are not kept in code or config. The service account still needs appropriate Exchange rights and network/authentication access.
+Scheduled execution connects to `http://<ExchangeServer>/PowerShell/` using `New-PSSession -ConfigurationName Microsoft.Exchange -Authentication Kerberos` and imports cmdlets. Set `ExchangeServer` to the Exchange server FQDN in config.json. This is a separate connection from SMTP TCP/587. The Microsoft-supported Kerberos endpoint uses HTTP with Kerberos payload encryption; do not enable Basic or TrustedHosts to make it work. It prompts for task-account credentials at registration; credentials are not kept in code or config. The scheduled-task domain account needs Exchange RBAC permissions, WinRM client/remote PowerShell prerequisites, Kerberos and DNS connectivity, and access to the Exchange PowerShell virtual directory (typically TCP/80). Do not confuse this port with SMTP submission on TCP/587.
 
 ## Reports
 
@@ -60,3 +60,11 @@ The email contains the HTML report, CSV findings, JSON summary and (on a partial
 ### Important operational note
 
 A test is still a live read-only interrogation of real Exchange configuration, but it does not modify mailboxes. Neither this version nor scheduled email have been validated against your Exchange SE deployment.
+
+## Running from a separate Windows server
+
+- Set `ExchangeServer` in config.json to the Exchange FQDN (not an HTTP URL), and run under a domain account authorized for Exchange remote PowerShell and mailbox rules.
+- Keep Mode=Test until the four selected mailboxes are checked. Test and Full both require their targets to belong to the allowed Databases.
+- For scheduled execution the same Windows identity must have previously created `smtp-credential.xml` on this *execution host* using `Set-SmtpCredential.ps1`. That credential is for SMTP only, not the Exchange Kerberos session.
+- The host must reach Exchange Remote PowerShell (commonly TCP 80 to /PowerShell/) and SMTP submission TCP 587. Confirm SMTP STARTTLS + SMTP AUTH actually work for the account; port accessibility alone is not proof.
+- A remote Exchange session is removed after successful normal execution. On fatal termination, PowerShell cleans up at process end.
