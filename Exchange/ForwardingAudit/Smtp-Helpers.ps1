@@ -2,7 +2,7 @@
 # Shared SMTP helper; secrets remain in DPAPI-encrypted file.
 function Get-SmtpConfig {
   [CmdletBinding()]
-  param([Parameter(Mandatory)]$Email,[Parameter(Mandatory)][string]$Root)
+  param([Parameter(Mandatory)]$Email,[Parameter(Mandatory)][string]$Root,[pscredential]$CredentialOverride)
   if(-not $Email){throw 'Brak sekcji Email w config.json'}
   $hostName=([string]$Email.Host).Trim()
   if(-not $hostName -or $hostName -match '(^|\.)example\.(local|com|net|org)$'){
@@ -16,20 +16,32 @@ function Get-SmtpConfig {
   $from=([string]$Email.From).Trim()
   $to=@($Email.To | Where-Object { $_ -and ([string]$_).Trim() })
   if(-not $from -or $to.Count -eq 0){throw 'Email.From i Email.To muszą zawierać rzeczywiste adresy.'}
-  $file=([string]$Email.CredentialFile).Trim()
-  if(-not $file){throw 'Email.CredentialFile jest puste.'}
-  if(-not [IO.Path]::IsPathRooted($file)){$file=Join-Path $Root $file}
-  if(-not (Test-Path -LiteralPath $file -PathType Leaf)){
-    throw "Brak pliku poświadczeń SMTP: $file. Uruchom Set-SmtpCredential.ps1 jako konto wykonujące audyt."
+  $transport='SmtpClient'
+  if($Email.PSObject.Properties['Transport'] -and $Email.Transport){
+    $transport=[string]$Email.Transport
   }
-  try{
-    $credential=Import-Clixml -LiteralPath $file -ErrorAction Stop
-    if($credential -isnot [pscredential]){throw 'Nieprawidłowy format poświadczeń.'}
-    $null=$credential.GetNetworkCredential().Password
-  }catch{
-    throw "Nie można odczytać poświadczeń SMTP pod bieżącym kontem Windows: $($_.Exception.Message)"
+  if($transport -notin @('SmtpClient','SendMailMessage')){
+    throw "Email.Transport musi mieć wartość SmtpClient lub SendMailMessage, otrzymano: $transport."
   }
-  [pscustomobject]@{Host=$hostName;Port=$port;From=$from;To=$to;Credential=$credential}
+  if($CredentialOverride){
+    $credential=$CredentialOverride
+  }else{
+    $file=([string]$Email.CredentialFile).Trim()
+    if(-not $file){throw 'Email.CredentialFile jest puste.'}
+    if(-not [IO.Path]::IsPathRooted($file)){$file=Join-Path $Root $file}
+    if(-not (Test-Path -LiteralPath $file -PathType Leaf)){
+      throw "Brak pliku poświadczeń SMTP: $file. Uruchom Set-SmtpCredential.ps1 jako konto wykonujące audyt."
+    }
+    try{
+      $credential=Import-Clixml -LiteralPath $file -ErrorAction Stop
+      if($credential -isnot [pscredential]){throw 'Nieprawidłowy format poświadczeń.'}
+      $null=$credential.GetNetworkCredential().Password
+    }catch{
+      throw "Nie można odczytać poświadczeń SMTP pod bieżącym kontem Windows: $($_.Exception.Message)"
+    }
+  }
+  [pscustomobject]@{Host=$hostName;Port=$port;From=$from;To=$to;Credential=$credential;Transport=$transport}
+
 }
 function Format-SmtpError {
   [CmdletBinding()]
@@ -55,6 +67,28 @@ function Send-AuditSmtpMessage {
     [Parameter(Mandatory)][string]$Body,
     [string[]]$Attachments=@()
   )
+  # Legacy parity with the proven Windows PowerShell Send-MailMessage command.
+  # It uses the same .NET SMTP implementation; no TLS/certificate checks are disabled.
+  if($SmtpConfig.Transport -eq 'SendMailMessage'){
+    $args=@{
+      SmtpServer=[string]$SmtpConfig.Host
+      Port=[int]$SmtpConfig.Port
+      UseSsl=$true
+      Credential=$SmtpConfig.Credential
+      From=[string]$SmtpConfig.From
+      To=[string[]]@($SmtpConfig.To)
+      Subject=$Subject
+      Body=$Body
+      Encoding='UTF8'
+      ErrorAction='Stop'
+    }
+    if($Attachments.Count){$args.Attachments=[string[]]$Attachments}
+    Send-MailMessage @args
+    return
+  }
+  if($SmtpConfig.Transport -ne 'SmtpClient'){
+    throw "Nieobsługiwany transport SMTP: $($SmtpConfig.Transport)"
+  }
   $message=$null
   $client=$null
   try{
