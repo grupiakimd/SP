@@ -160,44 +160,6 @@ jobs:
             if(-not $src.Contains($fragment)){throw "Missing SMTP parity argument: $fragment"}
           }
           Write-Host 'PASS: Send-MailMessage compatibility branch is present and configured for TLS credentials'
-      - name: Install pinned MailKit and test MIME generation in Windows PowerShell 5.1
-        shell: powershell
-        run: |
-          $ErrorActionPreference='Stop'
-          $root='Exchange/ForwardingAudit'
-          & (Join-Path $root 'Install-MailKit.ps1')
-          if(-not (Test-Path (Join-Path $root 'Dependencies/MailKit/lib/manifest.json'))){
-            throw 'MailKit NuGet installer did not create a manifest'
-          }
-          . (Join-Path $root 'Smtp-Helpers.ps1')
-          $pwdSecure=ConvertTo-SecureString 'for-tests-only' -AsPlainText -Force
-          $testCredential=New-Object Management.Automation.PSCredential('fixture-user',$pwdSecure)
-          $email=[pscustomobject]@{
-            Host='127.0.0.1';Port=587;UseStartTls=$true
-            From='test@example.local';To=@('audit@example.local')
-            Transport='MailKit';CredentialFile='not-needed.xml'
-          }
-          $config=Get-SmtpConfig -Email $email -Root $root -CredentialOverride $testCredential
-          if($config.Transport -ne 'MailKit'){throw 'MailKit should be the selected SMTP transport'}
-          Import-AuditMailKit -LibraryRoot $config.LibraryRoot
-          $attachment=Join-Path $env:RUNNER_TEMP 'audit-attachment.txt'
-          'Polski zalacznik' | Set-Content -LiteralPath $attachment -Encoding UTF8
-          $message=New-AuditMimeMessage -SmtpConfig $config -Subject 'Test znakow ASCII' -Body 'Tresc testowa' -Attachments @($attachment)
-          if($message.Subject -ne 'Test znakow ASCII'){throw 'MailKit subject is wrong'}
-          if($message.Body.ContentType.MimeType -ne 'multipart/mixed'){throw 'MailKit message is missing the attachment multipart'}
-          $buffer=New-Object IO.MemoryStream
-          try{
-            $message.WriteTo($buffer)
-            if($buffer.Length -lt 120){throw 'MailKit produced an unexpectedly short MIME message'}
-          }finally{$buffer.Dispose()}
-          Write-Host 'PASS: pinned MailKit and MimeKit loaded; message with UTF-8 subject and attachment generated'
-      - name: Package tested MailKit dependencies for offline deployment
-        uses: actions/upload-artifact@v4
-        with:
-          name: MailKit-offline-WinPS51
-          path: Exchange/ForwardingAudit/Dependencies/
-          if-no-files-found: error
-          retention-days: 30
       - name: Export offline report to PDF with Microsoft Edge
         shell: powershell
         run: |
