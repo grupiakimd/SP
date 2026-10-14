@@ -153,7 +153,7 @@ Jeżeli ręczne `Send-MailMessage -SmtpServer <serwer> -UseSsl -Port 587 -Creden
 }
 ~~~
 
-Powyższe wartości to przykłady — wstaw **swój działający adres IP SMTP, From i To**. Połączenie Exchange Remote PowerShell (`ExchangeServer`) jest niezależne od serwera pocztowego `Email.Host`. `Transport=SendMailMessage` uruchamia znane polecenie Windows PowerShell 5.1 (`Send-MailMessage`) z hasłem z bezpiecznego pliku DPAPI. Można nadal używać `Transport=SmtpClient` (domyślnie), który korzysta z tej samej biblioteki .NET.
+Powyższe wartości to przykłady — wstaw **swój działający adres IP SMTP, From i To**. Połączenie Exchange Remote PowerShell (`ExchangeServer`) jest niezależne od serwera pocztowego `Email.Host`. `Transport=SendMailMessage` uruchamia znane polecenie Windows PowerShell 5.1 (`Send-MailMessage`) z hasłem z bezpiecznego pliku DPAPI. Mechanizmy `Transport=SmtpClient` i `Transport=SendMailMessage` pozostają obsługiwane wyłącznie jako opcje awaryjne; domyślnym transportem jest `MailKit`.
 
 **Sprawdź pocztę bez skanowania skrzynek i z interaktywnym logowaniem:**
 
@@ -170,3 +170,47 @@ Jeżeli `config.json` ma inny serwer/nadawcę/odbiorców niż działające polec
 `-SaveCredential` zapisuje plik `smtp-credential.xml` *dopiero po udanej wysyłce*, pod tożsamością Windows bieżącej sesji. Harmonogram musi działać na tym samym komputerze i koncie Windows. W razie uruchamiania Harmonogramu jako inne konto, zapisane poświadczenia należy przygotować pod to konto. Nie zapisuj hasła w JSON ani repozytorium.
 
 Uwaga: `Send-MailMessage` jest wycofanym poleceniem, ale w tym środowisku Windows PowerShell 5.1 służy jako świadomie wybrany tryb zgodności z już działającym procesem. `-UseSsl` wymaga STARTTLS, nie wyłącza weryfikacji certyfikatu. Po teście warto przejść docelowo na utrzymywany klient SMTP z TLS i uwierzytelnianiem zgodnym z polityką organizacji.
+
+
+## MailKit — aktualnie zalecany mechanizm SMTP (Windows PowerShell 5.1)
+
+Domyślny transport to **MailKit** z obowiązkowym STARTTLS na TCP 587 i weryfikacją certyfikatu TLS. Poświadczenia nadal pochodzą z lokalnego pliku DPAPI `smtp-credential.xml` i nie są kopiowane do repozytorium.
+
+**Jednorazowo na komputerze wykonującym audyt** (wymagany Windows PowerShell 5.1, .NET Framework 4.8+ oraz chwilowy dostęp HTTPS do `api.nuget.org`):
+
+    cd C:\Skrypty\exchange_forward
+    .\Install-MailKit.ps1
+
+Instalator pobiera **przypięte wersje** MailKit 4.17.0 / MimeKit 4.17.0 i ich zależności z oficjalnego NuGet; sprawdza SHA512 paczek i zapisuje biblioteki do `Dependencies\MailKit\lib`. Folder `Dependencies/` jest ignorowany przez Git. **W codziennym audycie i Harmonogramie nie następuje żadne pobieranie zależności.** Jeśli serwer nie ma dostępu do NuGet, możesz zainstalować biblioteki na komputerze administracyjnym o takim samym .NET Framework i skopiować cały folder `Dependencies\MailKit\lib` na maszynę docelową, pamiętając o zasadach bezpieczeństwa organizacji.
+
+W `config.json` ustaw w istniejącej sekcji `Email`:
+
+~~~json
+"Transport": "MailKit",
+"Port": 587,
+"UseStartTls": true
+~~~
+
+Pozostaw istniejące `Email.Host`, `From`, `To` i `CredentialFile`. Wpisz rzeczywistą nazwę serwera SMTP — dla certyfikatu TLS warto użyć FQDN zgodnego z nazwą na certyfikacie; IP z wcześniejszego testu może się nie zgadzać z SAN certyfikatu. **Nie wyłączaj kontroli certyfikatu**, nie używaj obejścia `ServicePointManager.ServerCertificateValidationCallback`.
+
+Sprawdzenie samej wysyłki, bez powtarzania audytu Exchange:
+
+    .\Test-Smtp.ps1 -Transport MailKit
+
+Lub do jednorazowego testu z ponownym wpisaniem poświadczeń:
+
+    .\Test-Smtp.ps1 -Transport MailKit -PromptForCredential
+
+Aby dopiero po udanym teście zapisać sprawdzone poświadczenia SMTP pod kontem bieżącego użytkownika:
+
+    .\Test-Smtp.ps1 -Transport MailKit -PromptForCredential -SaveCredential
+
+Następnie zwykłe uruchomienie audytu:
+
+    .\Audit-ExchangeForwarding.ps1 -Pdf -OpenReport
+
+`-NoEmail` nadal wyłącza wysyłkę dla jednego uruchomienia. Automatyczne zadanie Windows korzysta z `Email.Transport` i nie wymaga ponownej rejestracji po aktualizacji skryptu, o ile ścieżki nie zmieniono.
+
+**Wycofane mechanizmy** `SendMailMessage` i `SmtpClient` pozostają obsługiwane **wyłącznie jako jawnie wybrane rozwiązanie awaryjne**. MailKit nie przełącza się automatycznie na nieszyfrowaną komunikację ani na inny transport. Uwaga: MailKit wymaga weryfikacji na właściwym serwerze SMTP; testy CI weryfikują ładowanie zależności i budowę wiadomości, nie uwierzytelnienie w firmowej sieci.
+
+Źródła bibliotek: https://www.nuget.org/packages/MailKit/4.17.0 oraz https://www.nuget.org/packages/MimeKit/4.17.0. Biblioteki nie są dodawane do repozytorium. Lista dokładnych wersji i użytych docelowych DLL jest zapisana lokalnie w `manifest.json`.
