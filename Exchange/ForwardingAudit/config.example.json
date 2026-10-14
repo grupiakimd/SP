@@ -29,5 +29,9 @@
   "InternalDomains": [
     "CHANGE_ME_FIRMA.PL",
     "CHANGE_ME_FIRMA.LOCAL"
-  ]
+  ],
+  "Pdf": {
+    "Enabled": false,
+    "EdgePath": ""
+  }
 }
