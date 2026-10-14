@@ -131,6 +131,9 @@ function New-AuditMimeMessage {
     [void]$builder.Attachments.Add([IO.Path]::GetFullPath($attachment))
   }
   $message.Body=$builder.ToMessageBody()
+  $want=@($Attachments | Where-Object { $_ }).Count
+  $have=@($message.Attachments).Count
+  if($have -ne $want){throw "MIME attachment mismatch: expected=$want actual=$have"}
   return $message
 }
 function Send-AuditSmtpMessage {
