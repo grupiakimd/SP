@@ -1,4 +1,4 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 # Shared SMTP helper; secrets remain in DPAPI-encrypted file.
 function Get-SmtpConfig {
   [CmdletBinding()]
