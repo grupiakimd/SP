@@ -122,6 +122,9 @@ jobs:
             if(@($data | Where-Object { $_.'Kierunek' -eq 'Nieustalone' }).Count -ne 1){throw "Wrong unresolved count: $format"}
             if(@($data | Where-Object { $_.'Przekierowanie do' -eq 'outside@example.org' }).Count -ne 1){throw "Mail contact target not resolved: $format"}
             if($markup -notmatch 'onlyExternal' -or $markup -notmatch 'Przekierowania na zewnątrz:'){throw "Missing UI external filter: $format"}
+            if($markup -notmatch 'class="columnFilter"' -or $markup -notmatch 'id="printPdf"' -or $markup -notmatch 'id="clearFilters"'){
+              throw "Missing interactive column filters or print/PDF controls in $format"
+            }
             if($markup -notmatch 'Data wykonania skanu:' -or $markup -notmatch 'Status: Zakończono pomyślnie'){
               throw "Missing Polish report header in $format"
             }
@@ -130,6 +133,38 @@ jobs:
             }
             Write-Host "PASS: $format report: 4 scanned / 5 entries / 3 external / 1 unresolved / 0 errors"
           }
+      - name: Test nested SMTP diagnostics without a mail server
+        shell: powershell
+        run: |
+          . 'Exchange/ForwardingAudit/Smtp-Helpers.ps1'
+          $nested=New-Object System.Exception('inner failure detail')
+          $problem=New-Object System.Net.Mail.SmtpException('Failure sending mail.',$nested)
+          $details=Format-SmtpError -Exception $problem
+          if($details -notmatch 'inner failure detail' -or $details -notmatch 'SMTP status'){
+            throw 'SMTP exception chain is not included in diagnostics'
+          }
+          try{
+            Get-SmtpConfig -Email ([pscustomobject]@{Host='smtp.example.local'}) -Root $env:TEMP | Out-Null
+            throw 'Test should have rejected example SMTP host'
+          }catch{
+            if($_.Exception.Message -notmatch 'Email.Host'){throw}
+          }
+          Write-Host 'PASS: SMTP nested error diagnostics and sample-host protection'
+      - name: Export offline report to PDF with Microsoft Edge
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          $dir=Join-Path $env:RUNNER_TEMP 'exchange-audit-fixture\Standard'
+          $html=Get-ChildItem -LiteralPath $dir -Filter 'Forwarding_*.html' | Select-Object -First 1
+          if(-not $html){throw 'Missing offline HTML fixture'}
+          $pdf=Join-Path $dir 'offline-export.pdf'
+          & 'Exchange/ForwardingAudit/Export-ReportPdf.ps1' -InputHtml $html.FullName -OutputPdf $pdf
+          if(-not (Test-Path -LiteralPath $pdf)){throw 'No PDF produced'}
+          $bytes=[IO.File]::ReadAllBytes($pdf)
+          if($bytes.Length -lt 1000){throw 'Unexpectedly small PDF'}
+          $sig=[Text.Encoding]::ASCII.GetString($bytes,0,4)
+          if($sig -ne '%PDF'){throw 'Invalid PDF signature'}
+          Write-Host "PASS: PDF export ($($bytes.Length) bytes)"
       - name: Validate example JSON
         shell: powershell
         run: |
