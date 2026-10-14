@@ -88,7 +88,22 @@ function Import-AuditMailKit {
       }
       continue
     }
-    Add-Type -Path $file -ErrorAction Stop
+    try{
+      # Loading assemblies is sufficient; Add-Type forces eager enumeration of all exported
+      # types and fails unnecessarily on optional reflection dependencies in .NET Framework.
+      $null=[Reflection.Assembly]::LoadFrom($file)
+    }catch{
+      $reason=$_.Exception.Message
+      $reflectionException=$_.Exception
+      while($reflectionException -and $reflectionException -isnot [Reflection.ReflectionTypeLoadException]){
+        $reflectionException=$reflectionException.InnerException
+      }
+      if($reflectionException){
+        $detail=@($reflectionException.LoaderExceptions | Where-Object { $_ } | ForEach-Object { $_.Message }) -join ' | '
+        $reason+=" $detail"
+      }
+      throw "MailKit DLL: $name; $reason"
+    }
   }
   $null=[MailKit.Net.Smtp.SmtpClient]
   $null=[MimeKit.MimeMessage]
