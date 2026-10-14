@@ -16,12 +16,12 @@ function Get-SmtpConfig {
   $from=([string]$Email.From).Trim()
   $to=@($Email.To | Where-Object { $_ -and ([string]$_).Trim() })
   if(-not $from -or $to.Count -eq 0){throw 'Email.From i Email.To muszą zawierać rzeczywiste adresy.'}
-  $transport='SmtpClient'
+  $transport='MailKit'
   if($Email.PSObject.Properties['Transport'] -and $Email.Transport){
     $transport=[string]$Email.Transport
   }
-  if($transport -notin @('SmtpClient','SendMailMessage')){
-    throw "Email.Transport musi mieć wartość SmtpClient lub SendMailMessage, otrzymano: $transport."
+  if($transport -notin @('MailKit','SmtpClient','SendMailMessage')){
+    throw "Email.Transport musi mieć wartość MailKit, SmtpClient lub SendMailMessage, otrzymano: $transport."
   }
   if($CredentialOverride){
     $credential=$CredentialOverride
@@ -40,7 +40,7 @@ function Get-SmtpConfig {
       throw "Nie można odczytać poświadczeń SMTP pod bieżącym kontem Windows: $($_.Exception.Message)"
     }
   }
-  [pscustomobject]@{Host=$hostName;Port=$port;From=$from;To=$to;Credential=$credential;Transport=$transport}
+  [pscustomobject]@{Host=$hostName;Port=$port;From=$from;To=$to;Credential=$credential;Transport=$transport;LibraryRoot=(Join-Path $Root 'Dependencies\MailKit\lib')}
 
 }
 function Format-SmtpError {
@@ -59,6 +59,65 @@ function Format-SmtpError {
   }
   return ($parts -join ' -> ')
 }
+function Import-AuditMailKit {
+  [CmdletBinding()]
+  param([Parameter(Mandatory)][string]$LibraryRoot)
+  $assemblies=@(
+    'System.Runtime.CompilerServices.Unsafe',
+    'System.Numerics.Vectors',
+    'System.Buffers',
+    'System.Memory',
+    'System.Threading.Tasks.Extensions',
+    'System.Formats.Asn1',
+    'BouncyCastle.Cryptography',
+    'MimeKit',
+    'MailKit'
+  )
+  if(-not (Test-Path -LiteralPath (Join-Path $LibraryRoot 'manifest.json') -PathType Leaf)){
+    throw "MailKit nie jest zainstalowany w $LibraryRoot. Najpierw uruchom .\Install-MailKit.ps1 na komputerze wykonującym audyt."
+  }
+  foreach($name in $assemblies){
+    $file=Join-Path $LibraryRoot ($name+'.dll')
+    if(-not (Test-Path -LiteralPath $file -PathType Leaf)){throw "Brak zależności MailKit: $file. Ponów .\Install-MailKit.ps1"}
+    # Prevent inadvertently binding an incompatible preloaded assembly from a different version.
+    $loaded=@([AppDomain]::CurrentDomain.GetAssemblies() | Where-Object { $_.GetName().Name -eq $name })
+    if($loaded.Count){
+      $loadedPath=([string]$loaded[0].Location)
+      if($loadedPath -and (-not [string]::Equals([IO.Path]::GetFullPath($loadedPath),[IO.Path]::GetFullPath($file),[StringComparison]::OrdinalIgnoreCase))){
+        throw "Konflikt bibliotek: $name został załadowany z $loadedPath. Uruchom audyt w nowej sesji Windows PowerShell 5.1."
+      }
+      continue
+    }
+    Add-Type -Path $file -ErrorAction Stop
+  }
+  $null=[MailKit.Net.Smtp.SmtpClient]
+  $null=[MimeKit.MimeMessage]
+}
+function New-AuditMimeMessage {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory)]$SmtpConfig,
+    [Parameter(Mandatory)][string]$Subject,
+    [Parameter(Mandatory)][string]$Body,
+    [string[]]$Attachments=@()
+  )
+  $message=[MimeKit.MimeMessage]::new()
+  $message.From.Add([MimeKit.MailboxAddress]::Parse([string]$SmtpConfig.From))
+  foreach($recipient in @($SmtpConfig.To)){
+    $message.To.Add([MimeKit.MailboxAddress]::Parse([string]$recipient))
+  }
+  $message.Subject=$Subject
+  $builder=[MimeKit.BodyBuilder]::new()
+  $builder.TextBody=$Body
+  foreach($attachment in @($Attachments)){
+    if(-not (Test-Path -LiteralPath $attachment -PathType Leaf)){
+      throw "Nie istnieje załącznik: $attachment"
+    }
+    [void]$builder.Attachments.Add([IO.Path]::GetFullPath($attachment))
+  }
+  $message.Body=$builder.ToMessageBody()
+  return $message
+}
 function Send-AuditSmtpMessage {
   [CmdletBinding()]
   param(
@@ -67,6 +126,27 @@ function Send-AuditSmtpMessage {
     [Parameter(Mandatory)][string]$Body,
     [string[]]$Attachments=@()
   )
+  if($SmtpConfig.Transport -eq 'MailKit'){
+    Import-AuditMailKit -LibraryRoot $SmtpConfig.LibraryRoot
+    $mime=New-AuditMimeMessage -SmtpConfig $SmtpConfig -Subject $Subject -Body $Body -Attachments $Attachments
+    $client=$null
+    try {
+      $client=[MailKit.Net.Smtp.SmtpClient]::new()
+      $client.Timeout=30000
+      # StartTls fails closed if STARTTLS is not offered; default certificate validation remains enabled.
+      $client.Connect([string]$SmtpConfig.Host,[int]$SmtpConfig.Port,[MailKit.Security.SecureSocketOptions]::StartTls)
+      if(-not $client.IsSecure){throw 'MailKit: brak zabezpieczonego połączenia STARTTLS.'}
+      if(-not $client.IsAuthenticated){
+        $network=$SmtpConfig.Credential.GetNetworkCredential()
+        $client.Authenticate([string]$network.UserName,[string]$network.Password)
+      }
+      $null=$client.Send($mime)
+      $client.Disconnect($true)
+    }finally{
+      if($client){$client.Dispose()}
+    }
+    return
+  }
   # Legacy parity with the proven Windows PowerShell Send-MailMessage command.
   # It uses the same .NET SMTP implementation; no TLS/certificate checks are disabled.
   if($SmtpConfig.Transport -eq 'SendMailMessage'){
