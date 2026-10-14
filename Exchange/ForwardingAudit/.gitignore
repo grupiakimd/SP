@@ -3,3 +3,4 @@ Reports/
 *.log
 smtp-credential.xml
 *.credential.xml
+Dependencies/
