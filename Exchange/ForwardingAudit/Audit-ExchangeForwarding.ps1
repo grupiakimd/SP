@@ -5,6 +5,7 @@ param(
  [string[]]$Mailboxes,
  [string]$ExchangeServer,
  [switch]$Full,
+ [switch]$Pdf,
  [switch]$NoEmail,
  [switch]$OpenReport
 )
@@ -228,6 +229,18 @@ $completedText=$completed.ToString('dd.MM.yyyy HH:mm:ss')
 } | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $folder "Summary_$stamp.json") -Encoding UTF8
 
 $thead=($columns | ForEach-Object {'<th>'+(Encode $labels[$_])+'</th>'}) -join ''
+# Column filters are client-side only; never discard audit evidence or alter the CSV.
+$filterCells=New-Object 'System.Collections.Generic.List[string]'
+for($ci=0;$ci -lt $columns.Count;$ci++){
+  $key=[string]$columns[$ci]
+  $label=Encode $labels[$key]
+  if($key -in @('Database','Type','Mechanism','Direction','Status','KeepOriginal')){
+    $filterCells.Add('<th><select class="columnFilter" data-col="'+$ci+'" aria-label="Filtruj: '+$label+'"><option value="">Wszystkie</option></select></th>')
+  }else{
+    $filterCells.Add('<th><input type="text" class="columnFilter" data-col="'+$ci+'" aria-label="Filtruj: '+$label+'" placeholder="Filtruj..." autocomplete="off"></th>')
+  }
+}
+$filterHead=$filterCells -join ''
 $body=($rows | ForEach-Object {
   $row=$_
   '<tr data-direction="'+(Encode $row.Direction)+'">'+(($columns | ForEach-Object {'<td>'+(Encode $row.$_)+'</td>'}) -join '')+'</tr>'
@@ -247,6 +260,21 @@ h1{margin:0 0 8px;font-size:25px}p{margin:11px 0}
 input[type=search]{padding:10px;width:320px;max-width:95%;border:1px solid #aab8c9;border-radius:5px;margin:14px 0}
 .filters{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin:10px 0}
 .filters label{cursor:pointer}
+.buttons{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:10px 0}
+button{cursor:pointer;border:1px solid #9bb0c7;border-radius:5px;padding:9px 13px;background:#fff;color:#172338}
+button:hover{background:#eaf0f8}
+.columnFilter{width:100%;min-width:95px;box-sizing:border-box;border:1px solid #bdccdc;border-radius:3px;padding:5px;font:12px Segoe UI,Arial,sans-serif}
+.filtersRow th{background:#f7f9fc;padding:5px}
+@page{size:A3 landscape;margin:10mm}
+@media print{
+  body{margin:0;background:white;color:black;font-size:10px}
+  .filters,.buttons,.filtersRow{display:none!important}
+  .scroll{overflow:visible;border:0}
+  table{white-space:normal;table-layout:auto}
+  th,td{padding:4px 5px;border:1px solid #c6c6c6;font-size:9px;word-wrap:break-word}
+  thead{display:table-header-group}
+  tr{page-break-inside:avoid}
+}
 .scroll{overflow-x:auto;background:white;border:1px solid #d5dfeb;border-radius:7px}
 table{width:100%;border-collapse:collapse;white-space:nowrap}
 th,td{padding:10px 12px;text-align:left;vertical-align:top;border-bottom:1px solid #e3e8f0}
@@ -265,24 +293,68 @@ td{max-width:520px;white-space:normal;overflow-wrap:break-word;word-wrap:break-w
 <div class="filters"><label for="q">Filtruj wyniki:</label>
 <input id="q" type="search" placeholder="Wpisz nazwę, adres lub źródło">
 <label for="onlyExternal"><input id="onlyExternal" type="checkbox"> Tylko przekierowania zewnętrzne</label></div>
+<div class="buttons"><button type="button" id="printPdf">Drukuj / zapisz do PDF</button><button type="button" id="clearFilters">Wyczyść filtry</button><span id="visibleCount"></span></div>
 $noResults
-<div class="scroll"><table id="results"><thead><tr>$thead</tr></thead><tbody>$body</tbody></table></div>
+<div class="scroll"><table id="results"><thead><tr>$thead</tr><tr class="filtersRow">$filterHead</tr></thead><tbody>$body</tbody></table></div>
 <script>
 (function() {
   var field=document.getElementById('q');
   var checkbox=document.getElementById('onlyExternal');
-  function updateRows(){
-    var q=field.value.toLowerCase();
-    var rows=document.querySelectorAll('#results tbody tr');
-    for(var i=0;i<rows.length;i++){
-      var content=(rows[i].textContent||rows[i].innerText||'').toLowerCase();
-      var external=rows[i].getAttribute('data-direction')==='Zewnętrzne';
-      rows[i].style.display=(content.indexOf(q)>=0 && (!checkbox.checked || external))?'':'none';
+  var filters=document.querySelectorAll('.columnFilter');
+  var rows=document.querySelectorAll('#results tbody tr');
+  var count=document.getElementById('visibleCount');
+  function content(el){return (el.textContent||el.innerText||'').replace(/^\s+|\s+$/g,'');}
+  function getCell(row,index){return content(row.cells[index]);}
+  // Build allowed select values from the actual table data, no network calls.
+  for(var i=0;i<filters.length;i++){
+    if(filters[i].tagName.toLowerCase()!=='select'){continue;}
+    var index=parseInt(filters[i].getAttribute('data-col'),10);
+    var values=[];
+    var seen={};
+    for(var j=0;j<rows.length;j++){
+      var item=getCell(rows[j],index);
+      if(!seen['v:'+item]){seen['v:'+item]=true;values.push(item);}
+    }
+    values.sort();
+    for(var k=0;k<values.length;k++){
+      var option=document.createElement('option');
+      option.value=values[k];option.appendChild(document.createTextNode(values[k]));
+      filters[i].appendChild(option);
     }
   }
-  field.onkeyup=updateRows;
-  field.oninput=updateRows;
+  function updateRows(){
+    var q=field.value.toLowerCase();
+    var visible=0;
+    for(var i=0;i<rows.length;i++){
+      var row=rows[i];
+      var external=row.getAttribute('data-direction')==='Zewnętrzne';
+      var show=content(row).toLowerCase().indexOf(q)>=0 && (!checkbox.checked||external);
+      if(show){
+        for(var j=0;j<filters.length;j++){
+          var filter=filters[j];
+          var value=filter.value.toLowerCase();
+          if(!value){continue;}
+          var cell=getCell(row,parseInt(filter.getAttribute('data-col'),10)).toLowerCase();
+          if(filter.tagName.toLowerCase()==='select' ? cell!==value : cell.indexOf(value)<0){
+            show=false;break;
+          }
+        }
+      }
+      row.style.display=show?'':'none';
+      if(show){visible++;}
+    }
+    count.innerHTML='Widoczne wiersze: '+visible+' / '+rows.length;
+  }
+  field.onkeyup=updateRows;field.oninput=updateRows;
   checkbox.onchange=updateRows;
+  for(var j=0;j<filters.length;j++){filters[j].onkeyup=updateRows;filters[j].onchange=updateRows;filters[j].oninput=updateRows;}
+  document.getElementById('clearFilters').onclick=function(){
+    field.value='';checkbox.checked=false;
+    for(var j=0;j<filters.length;j++){filters[j].value='';}
+    updateRows();
+  };
+  document.getElementById('printPdf').onclick=function(){window.print();};
+  updateRows();
 })();
 </script>
 </body></html>
@@ -290,43 +362,44 @@ $noResults
 $page | Set-Content (Join-Path $folder "Forwarding_$stamp.html") -Encoding UTF8
 Write-Host "Audyt: $stateLabel; przeskanowano: $scanned; skrzynki z przekierowaniami: $unique; przekierowania: $($rows.Count); zewnętrzne: $externalEntries; błędy: $($problems.Count); raport: $folder"
 
-if(-not $NoEmail -and $cfg.Email -and $cfg.Email.Enabled){
-  $mail=$null;$smtp=$null
+# Open the HTML even if subsequent SMTP delivery fails during an interactive run.
+$reportHtml=Join-Path $folder "Forwarding_$stamp.html"
+if($OpenReport){Start-Process -FilePath $reportHtml}
+$pdfFile=Join-Path $folder "Forwarding_$stamp.pdf"
+$pdfCreated=$false
+$pdfError=$null
+$pdfRequested=[bool]$Pdf -or [bool]($cfg.Pdf -and $cfg.Pdf.Enabled)
+if($pdfRequested){
   try{
-    $ec=$cfg.Email
-    if(!$ec.Host -or !$ec.From -or !$ec.To -or !$ec.CredentialFile){throw 'Email Host, From, To and CredentialFile are required.'}
-    if($ec.Port -lt 1 -or $ec.Port -gt 65535){throw 'Invalid SMTP port.'}
-    if($ec.UseStartTls -ne $true){throw 'SMTP email requires UseStartTls=true. This implementation supports STARTTLS (typically port 587), not implicit TLS port 465.'}
-    $credentialFile=[string]$ec.CredentialFile
-    if(![IO.Path]::IsPathRooted($credentialFile)){$credentialFile=Join-Path $PSScriptRoot $credentialFile}
-    $credential=Import-Clixml -LiteralPath $credentialFile -ErrorAction Stop
-    if($credential -isnot [pscredential]){throw 'Invalid credential file'}
-    $mail=New-Object Net.Mail.MailMessage
-    $mail.From=[string]$ec.From
-    foreach($recipient in @($ec.To)){if($recipient){[void]$mail.To.Add([string]$recipient)}}
-    if(!$mail.To.Count){throw 'No email recipients.'}
-    $mail.Subject="Exchange forwarding audit ($mode): $state - $stamp"
-    $mail.Body="Scanned: $scanned; mailboxes with forwarding: $unique; entries: $($rows.Count); external: $externalEntries; unresolved: $unresolvedEntries; errors: $($problems.Count). See attached reports."
-    $mail.Attachments.Add(([System.Net.Mail.Attachment]::new((Join-Path $folder "Forwarding_$stamp.html"))))
-    $mail.Attachments.Add(([System.Net.Mail.Attachment]::new($csv)))
-    $mail.Attachments.Add(([System.Net.Mail.Attachment]::new((Join-Path $folder "Summary_$stamp.json"))))
-    if($problems.Count){$mail.Attachments.Add(([System.Net.Mail.Attachment]::new((Join-Path $folder "Errors_$stamp.csv"))))}
-    $smtp=[System.Net.Mail.SmtpClient]::new([string]$ec.Host,[int]$ec.Port)
-    $smtp.EnableSsl=$true
-    $smtp.UseDefaultCredentials=$false
-    $smtp.Credentials=$credential.GetNetworkCredential()
-    $smtp.Timeout=30000
-    $smtp.Send($mail)
-    Write-Host 'SMTP report sent.'
+    $edgePath=if($cfg.Pdf){[string]$cfg.Pdf.EdgePath}else{''}
+    & (Join-Path $PSScriptRoot 'Export-ReportPdf.ps1') -InputHtml $reportHtml -OutputPdf $pdfFile -EdgePath $edgePath
+    $pdfCreated=Test-Path -LiteralPath $pdfFile
   }catch{
-    Write-Error -Message ("SMTP delivery failed: "+$_.Exception.Message) -ErrorAction Continue
-    exit 3
-  }finally{
-    if($mail){$mail.Dispose()}
-    if($smtp){$smtp.Dispose()}
+    $pdfError=$_.Exception.Message
+    Write-Warning "PDF nie został wygenerowany: $pdfError"
   }
 }
-if($OpenReport){ Start-Process -FilePath (Join-Path $folder "Forwarding_$stamp.html") }
+if(-not $NoEmail -and $cfg.Email -and $cfg.Email.Enabled){
+  . (Join-Path $PSScriptRoot 'Smtp-Helpers.ps1')
+  try{
+    $ec=Get-SmtpConfig -Email $cfg.Email -Root $PSScriptRoot
+    Write-Host "Wysyłka SMTP: $($ec.Host):$($ec.Port), STARTTLS, konto: $($ec.Credential.UserName)"
+    $attachments=@($reportHtml,$csv,(Join-Path $folder "Summary_$stamp.json"))
+    if($problems.Count){$attachments+=Join-Path $folder "Errors_$stamp.csv"}
+    if($pdfCreated){$attachments+=$pdfFile}
+    $body="Przeskanowano: $scanned; skrzynki z przekierowaniem: $unique; wpisy: $($rows.Count); zewnętrzne: $externalEntries; nieustalone: $unresolvedEntries; błędy odczytu: $($problems.Count)."
+    if($pdfError){$body+=" Uwaga: nie udało się wygenerować PDF: $pdfError"}
+    Send-AuditSmtpMessage -SmtpConfig $ec -Subject "Audyt przekierowań Exchange - $state - $stamp" -Body $body -Attachments $attachments
+    Write-Host 'Raport wysłany przez uwierzytelnione SMTP.'
+  }catch{
+    $details=Format-SmtpError -Exception $_.Exception
+    Write-Error -Message ("Wysyłka SMTP nieudana: "+$details) -ErrorAction Continue
+    Write-Warning 'Sprawdź Email.Host, port 587, TLS/certyfikat, SMTP AUTH, konto i uprawnienie Send As. Uruchom Test-Smtp.ps1.'
+    if($exchangeSession){Remove-PSSession $exchangeSession -ErrorAction SilentlyContinue}
+    exit 3
+  }
+}
 if($exchangeSession){Remove-PSSession $exchangeSession -ErrorAction SilentlyContinue}
+if($pdfError){exit 4}
 if($problems.Count){exit 2}
 exit 0
