@@ -1,4 +1,4 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 # Tests authenticated SMTP without querying Exchange mailboxes.
 [CmdletBinding()]
 param([string]$ConfigPath=(Join-Path $PSScriptRoot 'config.json'))
