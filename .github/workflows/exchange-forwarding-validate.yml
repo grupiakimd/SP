@@ -156,10 +156,10 @@ jobs:
           $ErrorActionPreference='Stop'
           . 'Exchange/ForwardingAudit/Smtp-Helpers.ps1'
           $src=Get-Content 'Exchange/ForwardingAudit/Smtp-Helpers.ps1' -Raw -Encoding UTF8
-          foreach($fragment in @('Send-MailMessage @mailArgs','UseSsl=$true','Credential=$SmtpConfig.Credential','Attachments=[string[]]')){
+          foreach($fragment in @('Send-MailMessage -SmtpServer','-BodyAsHtml -Body $Body -Credential $cred','-Attachments ([string[]]$attachmentPaths)')){
             if(-not $src.Contains($fragment)){throw "Missing required Send-MailMessage parameter: $fragment"}
           }
-          foreach($obsolete in @('Import-AuditMailKit','SecureSocketOptions','System.Net.Mail.SmtpClient]::new')){
+          foreach($obsolete in @('Import-AuditMailKit','SecureSocketOptions','System.Net.Mail.SmtpClient]::new','-UseSsl')){
             if($src.Contains($obsolete)){throw "Obsolete mail transport in helper: $obsolete"}
           }
           Write-Host 'PASS: Send-MailMessage is the only SMTP transport and includes credentials and attachments'
