@@ -117,7 +117,7 @@ for ($s = 1; $s -le $stores.Count; $s++) {
         $message = [string]$_.Exception.Message
 
         # Magazyn SharePoint i inne bez obslugi regul: oczekiwane.
-        if ($message -match '(?i)(does not support rules|rules are not supported|nie obs[łl]uguje regu[łl])') {
+        if ($message -match '(?i)(does not support rules|rules are not supported|nie obs.uguje regu.)') {
             $skipped++
             Write-Host ('Pominieto magazyn bez obslugi regul: {0}' -f $storeName)
         }
