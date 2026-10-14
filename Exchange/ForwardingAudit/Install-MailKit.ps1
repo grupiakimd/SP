@@ -25,6 +25,18 @@ $packages=@(
   @{Id='MimeKit';Version='4.17.0';Assembly='MimeKit'}
   @{Id='MailKit';Version='4.17.0';Assembly='MailKit'}
 )
+# Package SHA512 values pinned from official NuGet nupkg content.
+$expectedHashes=@{
+  'system.runtime.compilerservices.unsafe'='t2aXWJZBkAkRrTOnw31OBELKEVSDD5YvC3O5dXaHFsR66/nRTKm1y3Iq6NwFI5u5IlKrWYfdan66V+GKKkY8hQ=='
+  'system.numerics.vectors'='/rkvpUeUPlCY/2qYVQKiUsj5IKaXZcy2+SQAGAfemAdyEF5AgIgYOFNSTMWDXo09JWFX9HB+wV1yCyi2Mwi3TA=='
+  'system.buffers'='qve/dFwECwehSWlZmpkrrlIeATCvo/Hw2koyMrUVcDBy5gXAQrnwX8pHEoqgj8DgkrWuWW1DrQbFqoMbo+Fvrg=='
+  'system.memory'='NXcNYlWoXe5cz9sb8Huo6x2dCZVYkhwKtgE00n/MoI8V4ZI/7/t+EI5bOhQFlZfFjjqM8+U6prjU/aARt7H/tA=='
+  'system.threading.tasks.extensions'='zWRHXIBnbfzQE1SamNoW9X5NjEcW/JNAtvVxGKd3bcg71wQVmoI3pDq+WUa2A+temXSNCm7707hmAFwwcYlK0A=='
+  'system.formats.asn1'='BmMIpT6SEmFhYntSyWjEV14uTdPj11cyPzaqn3nr+v4mcRStpRQ5g3siendvADafgOGevAdIKCDmwoqJ6zkQ7g=='
+  'bouncycastle.cryptography'='Thoy+Tfuu6E08cZkbAtVTtqhvEGWnexYFtEcPChZBuEGN3ET6mwcsLFhdJ/wiuitOd8FlWtiq+InTUswYPDa7w=='
+  'mimekit'='uH/TEqa5XnbxCid4CXk12IhCwUvbg11erqOBLEmQ2fC6Nn/ksY6mYevbPB+GiC+FE7v8d5lfdBmil+UF7mxJ5g=='
+  'mailkit'='eOy/ZDcmdeD76anXpviyZYynl7k45FhwWIQAHU8W0/uyeKbsKo2MEtQUmD5n2wHeQAGzKCcIRt2LjZJXLC6kPw=='
+}
 [void][IO.Directory]::CreateDirectory($Destination)
 $destinationAbsolute=[IO.Path]::GetFullPath($Destination)
 $frameworks=@('net48','net47','net462','net461','net46','net45','netstandard2.0')
@@ -45,7 +57,10 @@ try {
       try { $actual=[Convert]::ToBase64String($sha.ComputeHash($stream)) }
       finally { $sha.Dispose() }
     } finally { $stream.Dispose() }
-    Write-Host "Package SHA512: $($p.Id) $version -> $actual"
+    if(-not $expectedHashes.ContainsKey($id) -or $actual -cne $expectedHashes[$id]){
+      throw "NuGet SHA512 niezgodne z przypiętą wersją: $($p.Id) $version"
+    }
+    Write-Host "PASS SHA512: $($p.Id) $version"
     $zip=[IO.Compression.ZipFile]::OpenRead($pkg)
     try {
       $entry=$null
