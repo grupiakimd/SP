@@ -368,10 +368,14 @@ if($OpenReport){Start-Process -FilePath $reportHtml}
 $pdfFile=Join-Path $folder "Forwarding_$stamp.pdf"
 $pdfCreated=$false
 $pdfError=$null
-$pdfRequested=[bool]$Pdf -or [bool]($cfg.Pdf -and $cfg.Pdf.Enabled)
+# Backward compatible: existing config.json files need no Pdf section.
+$pdfConfig=$null
+$pdfProperty=$cfg.PSObject.Properties['Pdf']
+if($pdfProperty){$pdfConfig=$pdfProperty.Value}
+$pdfRequested=[bool]$Pdf -or [bool]($pdfConfig -and $pdfConfig.Enabled)
 if($pdfRequested){
   try{
-    $edgePath=if($cfg.Pdf){[string]$cfg.Pdf.EdgePath}else{''}
+    $edgePath=if($pdfConfig -and $pdfConfig.PSObject.Properties['EdgePath']){[string]$pdfConfig.EdgePath}else{''}
     & (Join-Path $PSScriptRoot 'Export-ReportPdf.ps1') -InputHtml $reportHtml -OutputPdf $pdfFile -EdgePath $edgePath
     $pdfCreated=Test-Path -LiteralPath $pdfFile
   }catch{
