@@ -8,7 +8,7 @@ param(
   [string]$SmtpServer,
   [string]$From,
   [string[]]$To,
-  [ValidateSet('SmtpClient','SendMailMessage')]
+  [ValidateSet('MailKit','SmtpClient','SendMailMessage')]
   [string]$Transport
 )
 $ErrorActionPreference='Stop'
