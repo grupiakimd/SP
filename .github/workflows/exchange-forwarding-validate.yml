@@ -156,7 +156,7 @@ jobs:
           $ErrorActionPreference='Stop'
           . 'Exchange/ForwardingAudit/Smtp-Helpers.ps1'
           $src=Get-Content 'Exchange/ForwardingAudit/Smtp-Helpers.ps1' -Raw -Encoding UTF8
-          foreach($fragment in @("Send-MailMessage @args","UseSsl=$true","Port=[int]","Credential=$SmtpConfig.Credential")){
+          foreach($fragment in @('Send-MailMessage @args','UseSsl=$true','Port=[int]','Credential=$SmtpConfig.Credential')){
             if(-not $src.Contains($fragment)){throw "Missing SMTP parity argument: $fragment"}
           }
           Write-Host 'PASS: Send-MailMessage compatibility branch is present and configured for TLS credentials'
