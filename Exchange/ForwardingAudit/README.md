@@ -81,7 +81,7 @@ Błędy odczytu **nadal są zapisywane** w `Errors_*.csv`, a status `Niepełny` 
 - `Summary_YYYYMMDD_HHMMSS.json` — statystyki oraz techniczny stan COMPLETE/PARTIAL.
 - `Errors_YYYYMMDD_HHMMSS.csv` — tworzony tylko gdy wystąpi błąd odczytu.
 
-Kod wyjścia: 0 = kompletny audyt; 2 = niepełny audyt; 3 = błąd wysyłki SMTP. Awaria uruchomienia/połączenia również uniemożliwia uznanie audytu za kompletny.
+Kod wyjścia: 0 = kompletny audyt; 2 = niepełny audyt; 3 = błąd wysyłki SMTP; 4 = PDF nie powstał mimo włączenia. Awaria uruchomienia/połączenia również uniemożliwia uznanie audytu za kompletny.
 
 ## SMTP AUTH i Harmonogram zadań
 
@@ -99,6 +99,39 @@ Harmonogram uruchamia skrypt według lokalnego `config.json`, bez `-OpenReport`;
 
 ## Bezpieczeństwo i weryfikacja
 
-Repozytorium jest publiczne. **Nie publikuj** rzeczywistego `config.json`, plików DPAPI i raportów zawierających nazwy skrzynek, adresy przekierowań lub treści reguł. Ogranicz dostęp NTFS do katalogu wynikowego.
+Repozytorium jest obecnie prywatne, ale nadal trzeba chronić pliki lokalne. **Nie publikuj** rzeczywistego `config.json`, plików DPAPI i raportów zawierających nazwy skrzynek, adresy przekierowań lub treści reguł. Ogranicz dostęp NTFS do katalogu wynikowego.
 
 GitHub Actions uruchamia parser Windows PowerShell 5.1 oraz testy offline standardowego i administracyjnego raportu na czterech sztucznych skrzynkach, w tym ukrytej/wyłączonej regule przekierowania. Testy **nie zastępują** sprawdzenia działania na rzeczywistym Exchange SE.
+
+## Filtrowanie kolumn i PDF
+
+W HTML można używać jednocześnie wyszukiwania globalnego, filtra zewnętrznych przekierowań oraz **filtrów dla poszczególnych kolumn** (lista wyboru lub wpisanie tekstu). Przycisk `Wyczyść filtry` przywraca wszystkie wiersze. Filtrowanie nie zmienia CSV ani zebranych danych.
+
+Przycisk `Drukuj / zapisz do PDF` wywołuje okno wydruku dla aktualnie widocznych wierszy. Wybierz systemową drukarkę `Microsoft Print to PDF` albo `Zapisz jako PDF` w przeglądarce. To nie jest samodzielny generator PDF.
+
+Możesz włączyć **automatyczne zapisywanie pliku PDF** do Reports również z Harmonogramu. Wymagany jest **Microsoft Edge zainstalowany na komputerze wykonującym audyt**, nie na Exchange. Opcjonalna sekcja lokalnego `config.json`:
+
+~~~json
+"Pdf": {
+  "Enabled": true,
+  "EdgePath": ""
+}
+~~~
+
+Pusty `EdgePath` oznacza standardową ścieżkę instalacji Edge. Możesz też wymusić PDF dla jednego uruchomienia przełącznikiem `-Pdf`. Wynik: `Forwarding_YYYYMMDD_HHMMSS.pdf`, a przy włączonym SMTP także załącznik do e-maila. Ten PDF obejmuje cały raport; przefiltrowany wydruk uzyskasz przez przycisk w przeglądarce. Jeśli eksport automatyczny się nie uda, HTML/CSV pozostaną, a skrypt zwróci kod 4 (o ile nie było wcześniejszego błędu SMTP).
+
+Test eksportu PDF bez wysyłki e-maila:
+
+    .\Audit-ExchangeForwarding.ps1 -NoEmail -Pdf -OpenReport
+
+## Testowanie SMTP bez ponownego skanowania Exchange
+
+`ExchangeServer` służy do odczytu skrzynek, a **`Email.Host` służy do połączenia SMTP**. W `config.json` trzeba wpisać rzeczywisty FQDN serwera poczty obsługującego SMTP AUTH / STARTTLS, `Port=587`, `UseStartTls=true`, prawidłowego nadawcę i odbiorców. Konto SMTP musi mieć zgodę na wysyłkę z wybranego adresu.
+
+Po pobraniu nowych plików wykonaj:
+
+    .\Test-Smtp.ps1
+
+Skrypt nie łączy się z Exchange PowerShell i nie odczytuje żadnych skrzynek. Sprawdza DNS i wysyła krótką wiadomość testową przez uwierzytelnione SMTP. Pokazuje pełniejszy łańcuch przyczyn błędów, w tym `InnerException` i status SMTP; **nie wypisuje hasła**. Właściwy audyt również używa tego modułu.
+
+Typowe przyczyny to błędny `Email.Host`, brak komunikacji na TCP 587, certyfikat niezaufany, brak obsługi STARTTLS, zablokowany SMTP AUTH, niepoprawne hasło albo brak `Send As`. Nie wyłączaj weryfikacji certyfikatu TLS.
