@@ -135,3 +135,38 @@ Po pobraniu nowych plików wykonaj:
 Skrypt nie łączy się z Exchange PowerShell i nie odczytuje żadnych skrzynek. Sprawdza DNS i wysyła krótką wiadomość testową przez uwierzytelnione SMTP. Pokazuje pełniejszy łańcuch przyczyn błędów, w tym `InnerException` i status SMTP; **nie wypisuje hasła**. Właściwy audyt również używa tego modułu.
 
 Typowe przyczyny to błędny `Email.Host`, brak komunikacji na TCP 587, certyfikat niezaufany, brak obsługi STARTTLS, zablokowany SMTP AUTH, niepoprawne hasło albo brak `Send As`. Nie wyłączaj weryfikacji certyfikatu TLS.
+
+## Gdy Send-MailMessage działa, a wysyłka audytu nie
+
+Jeżeli ręczne `Send-MailMessage -SmtpServer <serwer> -UseSsl -Port 587 -Credential (Get-Credential)` działa, użyj dokładnie **tych samych** parametrów w `config.json`:
+
+~~~json
+"Email": {
+  "Enabled": true,
+  "Host": "10.0.0.10",
+  "Port": 587,
+  "UseStartTls": true,
+  "Transport": "SendMailMessage",
+  "From": "audit@example.local",
+  "To": ["odbiorca@example.local"],
+  "CredentialFile": "smtp-credential.xml"
+}
+~~~
+
+Powyższe wartości to przykłady — wstaw **swój działający adres IP SMTP, From i To**. Połączenie Exchange Remote PowerShell (`ExchangeServer`) jest niezależne od serwera pocztowego `Email.Host`. `Transport=SendMailMessage` uruchamia znane polecenie Windows PowerShell 5.1 (`Send-MailMessage`) z hasłem z bezpiecznego pliku DPAPI. Można nadal używać `Transport=SmtpClient` (domyślnie), który korzysta z tej samej biblioteki .NET.
+
+**Sprawdź pocztę bez skanowania skrzynek i z interaktywnym logowaniem:**
+
+    .\Test-Smtp.ps1 -PromptForCredential -Transport SendMailMessage
+
+Jeżeli `config.json` ma inny serwer/nadawcę/odbiorców niż działające polecenie, można tymczasowo podać parametry bez zapisywania ich do konfiguracji:
+
+    .\Test-Smtp.ps1 -PromptForCredential -Transport SendMailMessage -SmtpServer "10.0.0.10" -From "audit@example.local" -To "odbiorca@example.local"
+
+**Jeśli test się uda**, powtórz go z `-SaveCredential`, aby zapisać poświadczenia **tego samego konta SMTP** dla audytu:
+
+    .\Test-Smtp.ps1 -PromptForCredential -Transport SendMailMessage -SaveCredential
+
+`-SaveCredential` zapisuje plik `smtp-credential.xml` *dopiero po udanej wysyłce*, pod tożsamością Windows bieżącej sesji. Harmonogram musi działać na tym samym komputerze i koncie Windows. W razie uruchamiania Harmonogramu jako inne konto, zapisane poświadczenia należy przygotować pod to konto. Nie zapisuj hasła w JSON ani repozytorium.
+
+Uwaga: `Send-MailMessage` jest wycofanym poleceniem, ale w tym środowisku Windows PowerShell 5.1 służy jako świadomie wybrany tryb zgodności z już działającym procesem. `-UseSsl` wymaga STARTTLS, nie wyłącza weryfikacji certyfikatu. Po teście warto przejść docelowo na utrzymywany klient SMTP z TLS i uwierzytelnianiem zgodnym z polityką organizacji.
