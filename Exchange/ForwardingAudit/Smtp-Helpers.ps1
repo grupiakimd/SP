@@ -17,9 +17,6 @@ function Get-SmtpConfig {
   if(-not [int]::TryParse([string]$Email.Port,[ref]$port) -or $port -lt 1 -or $port -gt 65535){
     throw 'Email.Port musi byc liczba od 1 do 65535 (najczesciej 587).'
   }
-  if($Email.UseStartTls -ne $true){
-    throw 'Email.UseStartTls musi byc true: wysylka korzysta z -UseSsl (STARTTLS).'
-  }
   $from=([string]$Email.From).Trim()
   $to=@($Email.To | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | ForEach-Object { ([string]$_).Trim() })
   if(-not $from -or $to.Count -eq 0){
@@ -85,20 +82,22 @@ function Send-AuditSmtpMessage {
       throw "Brak zalacznika raportu: $file"
     }
   }
-  $mailArgs=@{
-    SmtpServer=[string]$SmtpConfig.Host
-    Port=[int]$SmtpConfig.Port
-    UseSsl=$true
-    Credential=$SmtpConfig.Credential
-    From=[string]$SmtpConfig.From
-    To=[string[]]@($SmtpConfig.To)
-    Subject=$Subject
-    Body=$Body
-    Encoding='UTF8'
-    ErrorAction='Stop'
-  }
+  # Exact same Send-MailMessage flags as the confirmed working command:
+  # SmtpServer, Port, From, To, Subject, BodyAsHtml, Credential.
+  # Deliberately no -UseSsl because it is absent from the confirmed command.
+  $cred=$SmtpConfig.Credential
   if($attachmentPaths.Count){
-    $mailArgs.Attachments=[string[]]$attachmentPaths
+    Send-MailMessage -SmtpServer ([string]$SmtpConfig.Host) `
+      -Port ([int]$SmtpConfig.Port) `
+      -From ([string]$SmtpConfig.From) `
+      -To ([string[]]@($SmtpConfig.To)) `
+      -Subject $Subject -BodyAsHtml -Body $Body -Credential $cred `
+      -Attachments ([string[]]$attachmentPaths) -ErrorAction Stop
+  }else{
+    Send-MailMessage -SmtpServer ([string]$SmtpConfig.Host) `
+      -Port ([int]$SmtpConfig.Port) `
+      -From ([string]$SmtpConfig.From) `
+      -To ([string[]]@($SmtpConfig.To)) `
+      -Subject $Subject -BodyAsHtml -Body $Body -Credential $cred -ErrorAction Stop
   }
-  Send-MailMessage @mailArgs
 }
