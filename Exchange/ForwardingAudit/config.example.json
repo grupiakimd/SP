@@ -23,7 +23,8 @@
     "To": [
       "admin@example.local"
     ],
-    "CredentialFile": "smtp-credential.xml"
+    "CredentialFile": "smtp-credential.xml",
+    "Transport": "SmtpClient"
   },
   "ExchangeServer": "exchange01.example.local",
   "InternalDomains": [
