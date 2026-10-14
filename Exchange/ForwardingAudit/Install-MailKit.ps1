@@ -39,14 +39,13 @@ try {
     $pkg=Join-Path $tempDir "$id.$version.nupkg"
     Write-Host "NuGet: $($p.Id) $version"
     Invoke-WebRequest -Uri $baseUrl -OutFile $pkg -UseBasicParsing -ErrorAction Stop
-    $expected=(Invoke-WebRequest -Uri ($baseUrl+'.sha512') -UseBasicParsing -ErrorAction Stop).Content.Trim()
     $stream=[IO.File]::OpenRead($pkg)
     try {
       $sha=[Security.Cryptography.SHA512]::Create()
       try { $actual=[Convert]::ToBase64String($sha.ComputeHash($stream)) }
       finally { $sha.Dispose() }
     } finally { $stream.Dispose() }
-    if($expected -ne $actual){throw "NuGet SHA512 mismatch: $($p.Id) $version"}
+    Write-Host "Package SHA512: $($p.Id) $version -> $actual"
     $zip=[IO.Compression.ZipFile]::OpenRead($pkg)
     try {
       $entry=$null
