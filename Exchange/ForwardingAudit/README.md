@@ -214,3 +214,33 @@ Następnie zwykłe uruchomienie audytu:
 **Wycofane mechanizmy** `SendMailMessage` i `SmtpClient` pozostają obsługiwane **wyłącznie jako jawnie wybrane rozwiązanie awaryjne**. MailKit nie przełącza się automatycznie na nieszyfrowaną komunikację ani na inny transport. Uwaga: MailKit wymaga weryfikacji na właściwym serwerze SMTP; testy CI weryfikują ładowanie zależności i budowę wiadomości, nie uwierzytelnienie w firmowej sieci.
 
 Źródła bibliotek: https://www.nuget.org/packages/MailKit/4.17.0 oraz https://www.nuget.org/packages/MimeKit/4.17.0. Biblioteki nie są dodawane do repozytorium. Lista dokładnych wersji i użytych docelowych DLL jest zapisana lokalnie w `manifest.json`.
+
+
+### Instalacja MailKit całkowicie offline — bez uruchamiania instalatora
+
+Jeżeli na stacji audytowej nie można uruchomić `Install-MailKit.ps1` lub nie ma ona dostępu do NuGet, pobierz **gotowy artefakt ZIP** ze zweryfikowanymi bibliotekami:
+
+1. Otwórz `Actions` w prywatnym repozytorium `grupiakimd/SP`.
+2. Otwórz najnowszy udany przebieg `Exchange Forwarding Audit - PowerShell 5.1 validation`.
+3. W sekcji `Artifacts` pobierz `MailKit-offline-WinPS51`.
+4. Rozpakuj pobrany ZIP **do katalogu `C:\Skrypty\exchange_forward\Dependencies`** (ten katalog utwórz ręcznie, jeśli go nie ma).
+
+Końcowa struktura ma być dokładnie taka:
+
+~~~text
+C:\Skrypty\exchange_forward\
+  Smtp-Helpers.ps1
+  Test-Smtp.ps1
+  Dependencies\
+    MailKit\
+      lib\
+        MailKit.dll
+        MimeKit.dll
+        BouncyCastle.Cryptography.dll
+        (... pozostałe biblioteki DLL ...)
+        manifest.json
+~~~
+
+Paczka jest generowana na Windows przez GitHub Actions z wersji wskazanych w instalatorze i obejmuje te same dziewięć bibliotek i `manifest.json`, których wymaga audyt. Nie dodawaj kolejnego poziomu folderu o nazwie `MailKit-offline-WinPS51`. Nie należy kopiować do katalogu `lib` niekompletnych źródeł `jstedfast/MailKit` — potrzebne są skompilowane DLL.
+
+Po rozpakowaniu sprawdź same pliki poleceniem `Test-Path 'C:\Skrypty\exchange_forward\Dependencies\MailKit\lib\manifest.json'`, a następnie uruchom `.\Test-Smtp.ps1 -Transport MailKit` (ta druga komenda wysyła krótką wiadomość testową). W produkcyjnych zadaniach nie ma pobierania z internetu; pliki są ładowane lokalnie.
