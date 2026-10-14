@@ -191,6 +191,13 @@ jobs:
             if($buffer.Length -lt 120){throw 'MailKit produced an unexpectedly short MIME message'}
           }finally{$buffer.Dispose()}
           Write-Host 'PASS: pinned MailKit and MimeKit loaded; message with UTF-8 subject and attachment generated'
+      - name: Package tested MailKit dependencies for offline deployment
+        uses: actions/upload-artifact@v4
+        with:
+          name: MailKit-offline-WinPS51
+          path: Exchange/ForwardingAudit/Dependencies/
+          if-no-files-found: error
+          retention-days: 30
       - name: Export offline report to PDF with Microsoft Edge
         shell: powershell
         run: |
