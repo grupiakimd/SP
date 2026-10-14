@@ -184,7 +184,7 @@ jobs:
           'Polski zalacznik' | Set-Content -LiteralPath $attachment -Encoding UTF8
           $message=New-AuditMimeMessage -SmtpConfig $config -Subject 'Test znakow ASCII' -Body 'Tresc testowa' -Attachments @($attachment)
           if($message.Subject -ne 'Test znakow ASCII'){throw 'MailKit subject is wrong'}
-          if(-not $message.Body.IsMimeType('multipart','mixed')){throw 'MailKit message is missing the attachment multipart'}
+          if($message.Body.ContentType.MimeType -ne 'multipart/mixed'){throw 'MailKit message is missing the attachment multipart'}
           $buffer=New-Object IO.MemoryStream
           try{
             $message.WriteTo($buffer)
