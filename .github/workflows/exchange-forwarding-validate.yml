@@ -163,6 +163,12 @@ jobs:
             if($src.Contains($obsolete)){throw "Obsolete mail transport in helper: $obsolete"}
           }
           Write-Host 'PASS: Send-MailMessage is the only SMTP transport and includes credentials and attachments'
+      - name: Test Send-MailMessage invocation and attachment behavior offline
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          & 'Exchange/ForwardingAudit/tests/Test-SmtpCommand.ps1'
+          if($LASTEXITCODE -ne 0){throw 'Offline SMTP command test failed'}
       - name: Export offline report to PDF with Microsoft Edge
         shell: powershell
         run: |
