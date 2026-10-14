@@ -49,9 +49,9 @@ jobs:
           [IO.Compression.ZipFile]::CreateFromDirectory($source,$zip,[IO.Compression.CompressionLevel]::Optimal,$false)
           $archive=[IO.Compression.ZipFile]::OpenRead($zip)
           try{
-            $names=@($archive.Entries | ForEach-Object FullName)
+            $names=@($archive.Entries | ForEach-Object { $_.FullName.Replace([char]92,[char]47) })
             foreach($entry in @('MailKit/lib/MailKit.dll','MailKit/lib/MimeKit.dll','MailKit/lib/manifest.json')){
-              if($names -notcontains $entry){throw "ZIP missing expected entry: $entry"}
+              if($names -notcontains $entry){throw "ZIP missing expected entry: $entry. Actual entries: $($names -join ', ')"}
             }
           }finally{$archive.Dispose()}
           Write-Host "PASS: ZIP = $zip ($((Get-Item -LiteralPath $zip).Length) bytes)"
