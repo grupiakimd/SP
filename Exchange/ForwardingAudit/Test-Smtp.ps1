@@ -9,15 +9,9 @@ try{
   $smtp=Get-SmtpConfig -Email $config.Email -Root $PSScriptRoot
   Write-Host "SMTP: $($smtp.Host):$($smtp.Port), STARTTLS, użytkownik: $($smtp.Credential.UserName)"
   Write-Host "Nadawca: $($smtp.From); odbiorcy: $($smtp.To -join ', ')"
-  $tcp=New-Object System.Net.Sockets.TcpClient
-  try{
-    $async=$tcp.BeginConnect([string]$smtp.Host,[int]$smtp.Port,$null,$null)
-    try{
-      if(-not $async.AsyncWaitHandle.WaitOne(10000,$false)){throw 'Timeout TCP (10 s). Sprawdź DNS, firewall i port SMTP.'}
-      $tcp.EndConnect($async)
-      Write-Host 'TCP: połączenie ustanowione.'
-    }finally{$async.AsyncWaitHandle.Close()}
-  }finally{$tcp.Close()}
+  $ips=[Net.Dns]::GetHostAddresses([string]$smtp.Host)
+  if(@($ips).Count -eq 0){throw 'DNS nie zwrócił adresu serwera SMTP.'}
+  Write-Host 'DNS: adres serwera SMTP rozwiązany. Próba autoryzacji i wysyłki...'
   Send-AuditSmtpMessage -SmtpConfig $smtp -Subject ('Test SMTP Exchange Audit '+(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')) -Body 'Wiadomość testowa: logowanie SMTP AUTH i wysyłka STARTTLS działają.'
   Write-Host 'SMTP AUTH/STARTTLS: wiadomość testowa wysłana poprawnie.'
   exit 0
