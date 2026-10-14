@@ -24,7 +24,6 @@ try{
   $email=[pscustomobject]@{
     Host=if($PSBoundParameters.ContainsKey('SmtpServer')){$SmtpServer}else{$cfg.Email.Host}
     Port=$cfg.Email.Port
-    UseStartTls=$cfg.Email.UseStartTls
     From=if($PSBoundParameters.ContainsKey('From')){$From}else{$cfg.Email.From}
     To=if($PSBoundParameters.ContainsKey('To')){$To}else{$cfg.Email.To}
     CredentialFile=$cfg.Email.CredentialFile
@@ -35,7 +34,7 @@ try{
     if(-not $cred){throw 'Przerwano wprowadzanie danych.'}
   }
   $smtp=Get-SmtpConfig -Email $email -Root $PSScriptRoot -CredentialOverride $cred
-  Write-Host "SMTP: $($smtp.Host):$($smtp.Port); polecenie: Send-MailMessage -UseSsl"
+  Write-Host "SMTP: $($smtp.Host):$($smtp.Port); polecenie: Send-MailMessage -BodyAsHtml (bez -UseSsl)"
   Write-Host "Konto SMTP: $($smtp.Credential.UserName); From: $($smtp.From); To: $($smtp.To -join ', ')"
   $addresses=@([Net.Dns]::GetHostAddresses([string]$smtp.Host))
   if(-not $addresses.Count){throw 'Nie mozna rozwiazac serwera SMTP na adres IP.'}
