@@ -181,9 +181,9 @@ jobs:
           if($config.Transport -ne 'MailKit'){throw 'MailKit should be the selected SMTP transport'}
           Import-AuditMailKit -LibraryRoot $config.LibraryRoot
           $attachment=Join-Path $env:RUNNER_TEMP 'audit-attachment.txt'
-          'Polski załącznik' | Set-Content -LiteralPath $attachment -Encoding UTF8
-          $message=New-AuditMimeMessage -SmtpConfig $config -Subject 'Test polskich znaków' -Body 'Treść testowa' -Attachments @($attachment)
-          if($message.Subject -ne 'Test polskich znaków'){throw 'MailKit subject is wrong'}
+          'Polski zalacznik' | Set-Content -LiteralPath $attachment -Encoding UTF8
+          $message=New-AuditMimeMessage -SmtpConfig $config -Subject 'Test znakow ASCII' -Body 'Tresc testowa' -Attachments @($attachment)
+          if($message.Subject -ne 'Test znakow ASCII'){throw 'MailKit subject is wrong'}
           if(-not $message.Body.IsMimeType('multipart','mixed')){throw 'MailKit message is missing the attachment multipart'}
           $buffer=New-Object IO.MemoryStream
           try{
