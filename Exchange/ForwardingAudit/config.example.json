@@ -24,7 +24,7 @@
       "admin@example.local"
     ],
     "CredentialFile": "smtp-credential.xml",
-    "Transport": "SmtpClient"
+    "Transport": "MailKit"
   },
   "ExchangeServer": "exchange01.example.local",
   "InternalDomains": [
