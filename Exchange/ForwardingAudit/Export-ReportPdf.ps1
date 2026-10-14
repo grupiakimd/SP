@@ -1,4 +1,4 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 # Optional PDF export using Microsoft Edge installed on the execution host.
 [CmdletBinding()]
 param(
