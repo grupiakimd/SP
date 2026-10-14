@@ -28,7 +28,7 @@ try{
     From=if($PSBoundParameters.ContainsKey('From')){$From}else{$email.From}
     To=if($PSBoundParameters.ContainsKey('To')){$To}else{$email.To}
     CredentialFile=$email.CredentialFile
-    Transport=if($PSBoundParameters.ContainsKey('Transport')){$Transport}elseif($email.PSObject.Properties['Transport']){$email.Transport}else{'SmtpClient'}
+    Transport=if($PSBoundParameters.ContainsKey('Transport')){$Transport}elseif($email.PSObject.Properties['Transport']){$email.Transport}else{'MailKit'}
   }
   $promptCredential=$null
   if($PromptForCredential){
