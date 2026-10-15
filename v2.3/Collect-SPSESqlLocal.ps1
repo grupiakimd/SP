@@ -35,14 +35,17 @@ function Capture-Section([string]$Name,[scriptblock]$Action){
     }
 }
 function Query([string]$Sql,[string]$Database='master'){
-    $b=New-Object System.Data.SqlClient.SqlConnectionStringBuilder
-    $b.DataSource=$server
-    $b.InitialCatalog=$Database
-    $b.IntegratedSecurity=$true
-    $b.ConnectTimeout=$ConnectTimeout
-    $b.Encrypt=$false   # Shared Memory; SQL may still enforce encryption per server policy.
-    $b.ApplicationName='SPSE ReadOnly Local SQL Audit v2.3'
-    $cn=New-Object System.Data.SqlClient.SqlConnection($b.ConnectionString)
+    # SqlConnectionStringBuilder inherits a dictionary adapter in PowerShell 5.1.
+    # Using .DataSource can be interpreted as key "DataSource" (unsupported).
+    # Use canonical ADO.NET connection-string keys instead.
+    $b=[System.Data.SqlClient.SqlConnectionStringBuilder]::new()
+    $b['Data Source']=$server
+    $b['Initial Catalog']=$Database
+    $b['Integrated Security']=$true
+    $b['Connect Timeout']=$ConnectTimeout
+    $b['Encrypt']=$false   # Shared Memory; server policy can still force encryption.
+    $b['Application Name']='SPSE ReadOnly Local SQL Audit v2.3.1'
+    $cn=[System.Data.SqlClient.SqlConnection]::new($b.ConnectionString)
     $cmd=$null
     try{
         $cn.Open()
