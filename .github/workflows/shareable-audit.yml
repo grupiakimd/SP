@@ -8,8 +8,10 @@ on:
       - 'tests/Test-SPSESqlMerge.ps1'
       - 'tests/Test-SPSESqlBuilder.ps1'
       - 'tests/Test-SPSESqlMerge_v2_3_1.ps1'
+      - 'tests/Test-SPWorkflowDiagnostic.ps1'
       - 'v2.3/**'
       - 'v2.3.1/**'
+      - 'v2.4/**'
       - '.github/workflows/shareable-audit.yml'
   pull_request:
     paths:
@@ -19,8 +21,10 @@ on:
       - 'tests/Test-SPSESqlMerge.ps1'
       - 'tests/Test-SPSESqlBuilder.ps1'
       - 'tests/Test-SPSESqlMerge_v2_3_1.ps1'
+      - 'tests/Test-SPWorkflowDiagnostic.ps1'
       - 'v2.3/**'
       - 'v2.3.1/**'
+      - 'v2.4/**'
       - '.github/workflows/shareable-audit.yml'
 jobs:
   privacy-smoke:
@@ -33,6 +37,9 @@ jobs:
       - name: PowerShell 5.1 SQL connection builder regression test
         shell: powershell
         run: .\tests\Test-SPSESqlBuilder.ps1
+      - name: PowerShell 5.1 workflow diagnostic parser and read-only guard
+        shell: powershell
+        run: .\tests\Test-SPWorkflowDiagnostic.ps1
       - name: PowerShell 5.1 standalone v2.3.1 regression test
         shell: powershell
         run: .\tests\Test-SPSESqlMerge_v2_3_1.ps1
