@@ -1,5 +1,14 @@
 # Historia wersji
 
+## v2.4.1 — 2026-10-15
+
+- Oddzielny skrypt audytu workflow całej witryny SPWeb, bez podawania listy.
+- Workflow 2010 przypięte do site, content type i list, oraz subskrypcje 2013 EnumerateSubscriptions.
+- Limit liczby list i status niekompletnego audytu, poufny JSON i pseudonimizowany MD.
+- Test statyczny uruchamiany w GitHub Actions na Windows PowerShell 5.1.
+
+
+
 ## v2.4 — 2026-10-15
 
 - Nowy **oddzielny** skrypt diagnostyki dla jednej witryny i listy: workflow object model 2010, subskrypcje 2013 (CSOM), konfiguracja autostartu.
