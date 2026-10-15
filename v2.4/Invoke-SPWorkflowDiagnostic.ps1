@@ -30,9 +30,10 @@ New-Item -ItemType Directory -Path $dir -Force | Out-Null
 $diag=[ordered]@{
   Version='2.4.0'
   Started=$started.ToString('s')
-  Target=[ordered]@{WebUrl=$WebUrl;ListTitle=$ListTitle;ItemId=$ItemId}
+  Target=[ordered]@{WebUrl=$WebUrl;ListTitle=$ListTitle;ItemId=$ItemId;ListId=$null}
   Mail=[ordered]@{FarmMailKnown=$false;WebAppMailConfigured=$null;WebAppSmtpServer=$null;WebAppFromConfigured=$null}
   WorkflowProxy=[ordered]@{Available=$null;Status=$null;Endpoint=$null}
+  TimerService=$null
   TimerJobs=@()
   LegacyAssociations=@()
   Workflow2013Subscriptions=@()
@@ -208,6 +209,19 @@ $md=@(
   'Raw JSON contains server names, workflow names and URL; do not publish it.'
   'Markdown contains technical metadata and still requires review before sharing.'
 )
+# Whitelisted diagnostics, never raw error messages or exception values from the environment.
+$allowedSections=@('EmailConfiguration','TimerJobs','SPTimerService','WorkflowProxy','WorkflowEndpoint',
+                   'LegacyAssociations','LegacyItemInstances','Workflow2013Subscriptions')
+$allowedErrors=@('COMException','SqlException','WebException','UnauthorizedAccessException',
+                 'InvalidOperationException','FileNotFoundException','TypeLoadException','RuntimeException',
+                 'ArgumentException','Exception')
+$md+= ''
+$md+= '## Failure categories'
+foreach($e in $errs){
+  $sect=if([string]$e.Section -in $allowedSections){[string]$e.Section}else{'Other'}
+  $typ=if([string]$e.Type -in $allowedErrors){[string]$e.Type}else{'Other'}
+  $md+= ('- {0}: {1}' -f $sect,$typ)
+}
 $mdPath=Join-Path $dir 'WorkflowDiagnostic_SHAREABLE.md'
 [IO.File]::WriteAllText($mdPath,($md -join [Environment]::NewLine),(New-Object Text.UTF8Encoding($true)))
 Write-Host ('PRIVATE: '+$full) -ForegroundColor Yellow
