@@ -223,7 +223,7 @@ foreach($e in $errs){
   $md+= ('- {0}: {1}' -f $sect,$typ)
 }
 $mdPath=Join-Path $dir 'WorkflowDiagnostic_SHAREABLE.md'
-[IO.File]::WriteAllText($mdPath,($md -join [Environment]::NewLine),(New-Object Text.UTF8Encoding($true)))
+[IO.File]::WriteAllText($mdPath,($md -join [Environment]::NewLine),(New-Object System.Text.UTF8Encoding($true)))
 Write-Host ('PRIVATE: '+$full) -ForegroundColor Yellow
 Write-Host ('SHAREABLE (REVIEW FIRST): '+$mdPath) -ForegroundColor Green
 Write-Host ('Legacy associations: '+$legacy.Count+'; SP2013 subscriptions: '+$wf13.Count+'; errors: '+$errs.Count)
