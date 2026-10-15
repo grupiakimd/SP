@@ -36,13 +36,11 @@ $destDir=Split-Path -Parent ([IO.Path]::GetFullPath($OutputPath))
 if(-not(Test-Path -LiteralPath $destDir -PathType Container)){
     New-Item -ItemType Directory -Path $destDir -Force|Out-Null
 }
-function E($value){
+function Encode-Html($value){
     if($null -eq $value){return '—'}
     return [System.Net.WebUtility]::HtmlEncode([string]$value)
 }
-function A($value){return @($value|Where-Object {$null -ne $_})}
-function N($value){return @($value|Where-Object {$null -ne $_}).Count}
-function Flag($value){
+function Render-Boolean($value){
     if($null -eq $value){return '<span class="muted">Brak danych</span>'}
     if($value -eq $true){return '<span class="yes">Tak</span>'}
     return '<span class="muted">Nie</span>'
@@ -62,8 +60,8 @@ $legacyOK=([string]$d.LegacyStatus -eq 'OK')
 $complete=($known2013 -and $legacyOK -and $errors.Count -eq 0 -and -not [bool]$d.ListTruncated)
 
 $html=New-Object 'System.Collections.Generic.List[string]'
-function Add([string]$line){[void]$script:html.Add($line)}
-Add @'
+function Append-Html([string]$line){[void]$script:html.Add($line)}
+Append-Html @'
 <!doctype html>
 <html lang="pl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -94,26 +92,26 @@ footer{color:var(--muted);font-size:12px;padding:16px 0}
 @media(max-width:480px){.grid{grid-template-columns:1fr}}
 </style></head><body>
 '@
-Add ('<header><h1>SharePoint · audyt Workflow</h1><p>Inwentaryzacja jednej witryny przed migracją SharePoint 2019 → SE</p><p class="sub" style="color:#c4d8e8">Witryna: '+(E $d.WebUrl)+' &nbsp; · &nbsp; audyt: '+(E $d.Date)+'</p></header>')
-Add '<main>'
-Add '<div class="grid">'
-Add ('<div class="card"><div class="label">Workflow 2010 · powiązania</div><strong>'+ $all2010.Count+'</strong><span class="sub">Włączone: '+$enabled2010.Count+'</span></div>')
-Add ('<div class="card"><div class="label">Workflow 2013 · subskrypcje</div><strong>'+ $(if($known2013){$wf13.Count}else{'?'}) +'</strong><span class="sub">Status odczytu: '+(E $d.Workflow2013Status)+'</span></div>')
-Add ('<div class="card"><div class="label">Automatyczny start 2010</div><strong>'+ $autoCreate.Count +'</strong><span class="sub">Po utworzeniu; po zmianie: '+$autoChange.Count+'</span></div>')
-Add ('<div class="card"><div class="label">Listy · odczytane</div><strong>'+ $d.ListScanned +'</strong><span class="sub">Łącznie: '+$d.ListTotal+'</span></div>')
-Add '</div>'
+Append-Html ('<header><h1>SharePoint · audyt Workflow</h1><p>Inwentaryzacja jednej witryny przed migracją SharePoint 2019 → SE</p><p class="sub" style="color:#c4d8e8">Witryna: '+(Encode-Html $d.WebUrl)+' &nbsp; · &nbsp; audyt: '+(Encode-Html $d.Date)+'</p></header>')
+Append-Html '<main>'
+Append-Html '<div class="grid">'
+Append-Html ('<div class="card"><div class="label">Workflow 2010 · powiązania</div><strong>'+ $all2010.Count+'</strong><span class="sub">Włączone: '+$enabled2010.Count+'</span></div>')
+Append-Html ('<div class="card"><div class="label">Workflow 2013 · subskrypcje</div><strong>'+ $(if($known2013){$wf13.Count}else{'?'}) +'</strong><span class="sub">Status odczytu: '+(Encode-Html $d.Workflow2013Status)+'</span></div>')
+Append-Html ('<div class="card"><div class="label">Automatyczny start 2010</div><strong>'+ $autoCreate.Count +'</strong><span class="sub">Po utworzeniu; po zmianie: '+$autoChange.Count+'</span></div>')
+Append-Html ('<div class="card"><div class="label">Listy · odczytane</div><strong>'+ $d.ListScanned +'</strong><span class="sub">Łącznie: '+$d.ListTotal+'</span></div>')
+Append-Html '</div>'
 if($complete){
-    Add '<div class="notice">Odczyt objętych sekcji zakończony bez zgłoszonych błędów. To nie potwierdza, że workflow są uruchamiane ani że działają poprawnie.</div>'
+    Append-Html '<div class="notice">Odczyt objętych sekcji zakończony bez zgłoszonych błędów. To nie potwierdza, że workflow są uruchamiane ani że działają poprawnie.</div>'
 }else{
-    Add ('<div class="notice warn"><b>Audyt częściowy / wymagający weryfikacji.</b> Workflow 2010: '+(E $d.LegacyStatus)+
-         '; workflow 2013: '+(E $d.Workflow2013Status)+'; błędy kolektora: '+$errors.Count+
-         '; limit list osiągnięty: '+(E $d.ListTruncated)+'. Brak odczytu nie oznacza braku workflow.</div>')
+    Append-Html ('<div class="notice warn"><b>Audyt częściowy / wymagający weryfikacji.</b> Workflow 2010: '+(Encode-Html $d.LegacyStatus)+
+         '; workflow 2013: '+(Encode-Html $d.Workflow2013Status)+'; błędy kolektora: '+$errors.Count+
+         '; limit list osiągnięty: '+(Encode-Html $d.ListTruncated)+'. Brak odczytu nie oznacza braku workflow.</div>')
 }
-Add '<section class="panel"><h2>Konsekwencje migracji</h2>'
-Add ('<div class="notice warn"><b>Workflow 2010: '+$all2010.Count+' wykrytych powiązań.</b> Potrzebny przegląd i plan zastąpienia procesów, które są nadal używane. Sama flaga Enabled nie potwierdza rzeczywistego działania.</div>')
-Add ('<div class="notice"><b>Workflow 2013: '+$(if($known2013){[string]$wf13.Count}else{'liczba niepotwierdzona'})+'.</b> Ewentualna migracja wymaga przygotowania odpowiedniego Workflow Managera, zgodności procesów i testów funkcjonalnych.</div>')
-Add '<p class="sub">To inwentaryzacja konfiguracji, a nie diagnostyka niedziałających maili ani raport o ostatnich wykonaniach.</p></section>'
-Add '<section class="panel"><h2>Stan zbierania danych</h2><div class="meta">'
+Append-Html '<section class="panel"><h2>Konsekwencje migracji</h2>'
+Append-Html ('<div class="notice warn"><b>Workflow 2010: '+$all2010.Count+' wykrytych powiązań.</b> Potrzebny przegląd i plan zastąpienia procesów, które są nadal używane. Sama flaga Enabled nie potwierdza rzeczywistego działania.</div>')
+Append-Html ('<div class="notice"><b>Workflow 2013: '+$(if($known2013){[string]$wf13.Count}else{'liczba niepotwierdzona'})+'.</b> Ewentualna migracja wymaga przygotowania odpowiedniego Workflow Managera, zgodności procesów i testów funkcjonalnych.</div>')
+Append-Html '<p class="sub">To inwentaryzacja konfiguracji, a nie diagnostyka niedziałających maili ani raport o ostatnich wykonaniach.</p></section>'
+Append-Html '<section class="panel"><h2>Stan zbierania danych</h2><div class="meta">'
 foreach($a in @(
     @('Workflow 2010', $d.LegacyStatus),
     @('Workflow 2013', $d.Workflow2013Status),
@@ -125,13 +123,13 @@ foreach($a in @(
     @('WFM proxy', $d.WorkflowManager.Available),
     @('SMTP skonfigurowany', $d.SMTP.ServerConfigured)
 )){
-    Add ('<div><b>'+ (E $a[0])+'</b>'+ (E $a[1])+'</div>')
+    Append-Html ('<div><b>'+ (Encode-Html $a[0])+'</b>'+ (Encode-Html $a[1])+'</div>')
 }
-Add '</div></section>'
+Append-Html '</div></section>'
 
-Add '<section class="panel"><h2>Listy i biblioteki z workflow</h2>'
-Add '<div class="controls"><input id="filter" type="search" placeholder="Szukaj nazwy listy..."><label><input id="only" type="checkbox" checked> Tylko listy z workflow</label><span class="sub" id="count"></span></div>'
-Add '<div class="scroll"><table><thead><tr><th>Lista / biblioteka</th><th>2010</th><th>Włączone 2010</th><th>Start: utworzenie</th><th>2013</th><th>Włączone 2013</th></tr></thead><tbody id="listrows">'
+Append-Html '<section class="panel"><h2>Listy i biblioteki z workflow</h2>'
+Append-Html '<div class="controls"><input id="filter" type="search" placeholder="Szukaj nazwy listy..."><label><input id="only" type="checkbox" checked> Tylko listy z workflow</label><span class="sub" id="count"></span></div>'
+Append-Html '<div class="scroll"><table><thead><tr><th>Lista / biblioteka</th><th>2010</th><th>Włączone 2010</th><th>Start: utworzenie</th><th>2013</th><th>Włączone 2013</th></tr></thead><tbody id="listrows">'
 foreach($l in $lists){
     $legacy=@($l.Legacy|Where-Object {$null -ne $_})
     $current=@($l.Workflow2013|Where-Object {$null -ne $_})
@@ -139,33 +137,33 @@ foreach($l in $lists){
     $lc=@($active|Where-Object {$_.AutoStartCreate -eq $true}).Count
     $c13=@($current|Where-Object {$_.Enabled -eq $true}).Count
     $has=if($legacy.Count+$current.Count -gt 0){'1'}else{'0'}
-    Add ('<tr data-has="'+$has+'"><td><b>'+ (E $l.Title)+'</b>'+$(if($l.Hidden){' <span class="tag">Ukryta</span>'}else{''})+
+    Append-Html ('<tr data-has="'+$has+'"><td><b>'+ (Encode-Html $l.Title)+'</b>'+$(if($l.Hidden){' <span class="tag">Ukryta</span>'}else{''})+
       '</td><td>'+ $legacy.Count+'</td><td>'+ $active.Count+'</td><td>'+ $lc+'</td><td>'+ $current.Count+'</td><td>'+ $c13+'</td></tr>')
 }
-Add '</tbody></table></div><p class="sub">Lista może mieć więcej niż jedno powiązanie workflow. 2013 bez przypisania do listy nie jest sztucznie przypisywany do żadnej pozycji.</p></section>'
+Append-Html '</tbody></table></div><p class="sub">Lista może mieć więcej niż jedno powiązanie workflow. 2013 bez przypisania do listy nie jest sztucznie przypisywany do żadnej pozycji.</p></section>'
 
-Add '<section class="panel"><h2>Workflow na poziomie witryny i typów zawartości (2010)</h2>'
-Add '<div class="scroll"><table><thead><tr><th>Zakres</th><th>Nazwa</th><th>Włączony</th><th>Start przy utworzeniu</th><th>Start przy zmianie</th></tr></thead><tbody>'
+Append-Html '<section class="panel"><h2>Workflow na poziomie witryny i typów zawartości (2010)</h2>'
+Append-Html '<div class="scroll"><table><thead><tr><th>Zakres</th><th>Nazwa</th><th>Włączony</th><th>Start przy utworzeniu</th><th>Start przy zmianie</th></tr></thead><tbody>'
 foreach($w in $site){
-    Add ('<tr><td>Witryna</td><td>'+ (E $w.Name)+'</td><td>'+ (Flag $w.Enabled)+'</td><td>'+ (Flag $w.AutoStartCreate)+'</td><td>'+ (Flag $w.AutoStartChange)+'</td></tr>')
+    Append-Html ('<tr><td>Witryna</td><td>'+ (Encode-Html $w.Name)+'</td><td>'+ (Render-Boolean $w.Enabled)+'</td><td>'+ (Render-Boolean $w.AutoStartCreate)+'</td><td>'+ (Render-Boolean $w.AutoStartChange)+'</td></tr>')
 }
 foreach($w in $types){
-    Add ('<tr><td>Typ zawartości</td><td>'+ (E $w.Name)+'</td><td>'+ (Flag $w.Enabled)+'</td><td>'+ (Flag $w.AutoStartCreate)+'</td><td>'+ (Flag $w.AutoStartChange)+'</td></tr>')
+    Append-Html ('<tr><td>Typ zawartości</td><td>'+ (Encode-Html $w.Name)+'</td><td>'+ (Render-Boolean $w.Enabled)+'</td><td>'+ (Render-Boolean $w.AutoStartCreate)+'</td><td>'+ (Render-Boolean $w.AutoStartChange)+'</td></tr>')
 }
-if($site.Count+$types.Count -eq 0){Add '<tr><td colspan="5">Brak wykrytych powiązań lub odczyt niekompletny — patrz status audytu.</td></tr>'}
-Add '</tbody></table></div></section>'
-Add '<section class="panel"><h2>Subskrypcje workflow 2013</h2>'
-Add '<div class="scroll"><table><thead><tr><th>Nazwa</th><th>Zakres</th><th>Włączony</th><th>Zdarzenia</th></tr></thead><tbody>'
+if($site.Count+$types.Count -eq 0){Append-Html '<tr><td colspan="5">Brak wykrytych powiązań lub odczyt niekompletny — patrz status audytu.</td></tr>'}
+Append-Html '</tbody></table></div></section>'
+Append-Html '<section class="panel"><h2>Subskrypcje workflow 2013</h2>'
+Append-Html '<div class="scroll"><table><thead><tr><th>Nazwa</th><th>Zakres</th><th>Włączony</th><th>Zdarzenia</th></tr></thead><tbody>'
 foreach($w in $wf13){
-    Add ('<tr><td>'+ (E $w.Name)+'</td><td>'+ (E $w.Scope)+'</td><td>'+ (Flag $w.Enabled)+'</td><td>'+ (E (($w.EventTypes | Where-Object {$null -ne $_}) -join ', '))+'</td></tr>')
+    Append-Html ('<tr><td>'+ (Encode-Html $w.Name)+'</td><td>'+ (Encode-Html $w.Scope)+'</td><td>'+ (Render-Boolean $w.Enabled)+'</td><td>'+ (E (($w.EventTypes | Where-Object {$null -ne $_}) -join ', '))+'</td></tr>')
 }
-if($wf13.Count -eq 0){Add '<tr><td colspan="4">Brak wyników — sprawdź status odczytu Workflow 2013 powyżej.</td></tr>'}
-Add '</tbody></table></div></section>'
+if($wf13.Count -eq 0){Append-Html '<tr><td colspan="4">Brak wyników — sprawdź status odczytu Workflow 2013 powyżej.</td></tr>'}
+Append-Html '</tbody></table></div></section>'
 
-Add '<section class="panel"><h2>Ograniczenia i bezpieczeństwo</h2><p>Raport zawiera rzeczywiste nazwy list i workflow. <b>Nie wysyłaj tego HTML do publicznych repozytoriów ani do zewnętrznych odbiorców.</b> Do analizy zdalnej służy osobny pseudonimizowany <code>WorkflowSite_SHAREABLE.md</code>.</p>'
-Add '<p>Skrypt nie skanuje podwitryn, historii wszystkich instancji ani skuteczności powiadomień. Nie łączy się z internetem i nie modyfikuje SharePoint.</p></section>'
-Add '<footer>Wygenerowano lokalnie z WorkflowSite_PRIVATE.json · dashboard offline · bez zewnętrznych bibliotek</footer></main>'
-Add @'
+Append-Html '<section class="panel"><h2>Ograniczenia i bezpieczeństwo</h2><p>Raport zawiera rzeczywiste nazwy list i workflow. <b>Nie wysyłaj tego HTML do publicznych repozytoriów ani do zewnętrznych odbiorców.</b> Do analizy zdalnej służy osobny pseudonimizowany <code>WorkflowSite_SHAREABLE.md</code>.</p>'
+Append-Html '<p>Skrypt nie skanuje podwitryn, historii wszystkich instancji ani skuteczności powiadomień. Nie łączy się z internetem i nie modyfikuje SharePoint.</p></section>'
+Append-Html '<footer>Wygenerowano lokalnie z WorkflowSite_PRIVATE.json · dashboard offline · bez zewnętrznych bibliotek</footer></main>'
+Append-Html @'
 <script>
 (function(){
   var input=document.getElementById('filter');
