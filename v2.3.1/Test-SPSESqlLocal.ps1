@@ -33,10 +33,21 @@ try {
     $cmd=$connection.CreateCommand()
     try {
         $cmd.CommandTimeout=30
-        $cmd.CommandText="SELECT CAST(SERVERPROPERTY('ProductVersion') AS nvarchar(80))"
-        $version=$cmd.ExecuteScalar()
+        # Check the actual SQLInstances projection, including the reserved CLUSTERED alias.
+        $cmd.CommandText=@'
+SELECT CAST(SERVERPROPERTY('ServerName') AS nvarchar(256)) AS [ServerName],
+ CAST(SERVERPROPERTY('ProductVersion') AS nvarchar(80)) AS [ProductVersion],
+ CAST(SERVERPROPERTY('IsClustered') AS int) AS [Clustered];
+'@
+        $reader=$cmd.ExecuteReader()
+        try {
+            if(-not $reader.Read()){throw 'SQL zwrocil pusty wynik weryfikacji.'}
+            $version=[string]$reader['ProductVersion']
+            $clustered=[string]$reader['Clustered']
+        } finally { $reader.Close() }
         if(-not $version){throw 'SQL zwrocil pusty ProductVersion.'}
-        Write-Host ('SQL CONNECTED: '+$version) -ForegroundColor Green
+        Write-Host ('SQL CONNECTED: '+$version+' | CLUSTERED='+$clustered) -ForegroundColor Green
+        Write-Host 'PASS: SQLInstances T-SQL query was accepted by the SQL engine.' -ForegroundColor Green
         Write-Host 'Mozesz uruchomic Collect-SPSESqlLocal.ps1 bez -InstanceName (domyslna MSSQLSERVER).' -ForegroundColor Green
     } finally { $cmd.Dispose() }
 } catch {
