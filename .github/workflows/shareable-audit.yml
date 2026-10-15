@@ -10,10 +10,12 @@ on:
       - 'tests/Test-SPSESqlMerge_v2_3_1.ps1'
       - 'tests/Test-SPWorkflowDiagnostic.ps1'
       - 'tests/Test-SPWorkflowSiteDiagnostic.ps1'
+      - 'tests/Test-SPWorkflowDashboard.ps1'
       - 'v2.3/**'
       - 'v2.3.1/**'
       - 'v2.4/**'
       - 'v2.4.1/**'
+      - 'v2.4.2/**'
       - '.github/workflows/shareable-audit.yml'
   pull_request:
     paths:
@@ -25,10 +27,12 @@ on:
       - 'tests/Test-SPSESqlMerge_v2_3_1.ps1'
       - 'tests/Test-SPWorkflowDiagnostic.ps1'
       - 'tests/Test-SPWorkflowSiteDiagnostic.ps1'
+      - 'tests/Test-SPWorkflowDashboard.ps1'
       - 'v2.3/**'
       - 'v2.3.1/**'
       - 'v2.4/**'
       - 'v2.4.1/**'
+      - 'v2.4.2/**'
       - '.github/workflows/shareable-audit.yml'
 jobs:
   privacy-smoke:
@@ -41,6 +45,9 @@ jobs:
       - name: PowerShell 5.1 SQL connection builder regression test
         shell: powershell
         run: .\tests\Test-SPSESqlBuilder.ps1
+      - name: PowerShell 5.1 offline workflow HTML generation
+        shell: powershell
+        run: .\tests\Test-SPWorkflowDashboard.ps1
       - name: PowerShell 5.1 v2.4.1 site workflow parser
         shell: powershell
         run: .\tests\Test-SPWorkflowSiteDiagnostic.ps1
