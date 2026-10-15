@@ -15,6 +15,7 @@ Zestaw narzędzi **PowerShell 5.1** do inwentaryzacji istniejącej farmy SharePo
 | **v2.3** | [`v2.3/`](v2.3/) | Lokalny audyt SQL i scalanie ze SharePoint; wersja archiwalna z błędem aliasu T-SQL. |
 | **v2.3.1** | [`v2.3.1/`](v2.3.1/) | **Zalecana dla SQL.** Poprawiony alias `Clustered`, oddzielny kompletny folder i preflight test SQL. |
 | **v2.4** | [`v2.4/`](v2.4/) | **Nowe.** Diagnostyka workflow 2010/2013, autostartu, alertów SMTP i Timer Jobs jednej listy. |
+| **v2.4.1** | [`v2.4.1/`](v2.4.1/) | **Nowe.** Diagnostyka jednej witryny bez ListTitle, workflow 2010 site/list i 2013 subskrypcje. |
 
 ![Podgląd dashboardu v2](v2/docs/dashboard_preview.png)
 
