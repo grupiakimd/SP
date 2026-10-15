@@ -11,7 +11,8 @@ Zestaw narzędzi **PowerShell 5.1** do inwentaryzacji istniejącej farmy SharePo
 | **v1.0** | [`v1/`](v1/) | Pierwotny kolektor PowerShell, raporty CSV/JSON, podstawowy HTML. |
 | **v2.0** | [`v2/`](v2/) | Pierwszy interaktywny dashboard HTML offline; wersja archiwalna. |
 | **v2.1** | [`v2.1/`](v2.1/) | Naprawiony eksport HTML, automatyczne wykrywanie przebiegu, odzyskiwanie z CSV. |
-| **v2.2** | [`v2.2/`](v2.2/) | **Zalecana.** Oddzielny raport pseudonimizowany Markdown do analizy, bez nazw infrastruktury. |
+| **v2.2** | [`v2.2/`](v2.2/) | Pełny audyt farmy i nocne uruchomienie w Harmonogramie. |
+| **v2.3** | [`v2.3/`](v2.3/) | **Nowe.** Lokalny audyt SQL i scalanie ze SharePoint do HTML/MD. |
 
 ![Podgląd dashboardu v2](v2/docs/dashboard_preview.png)
 
@@ -63,6 +64,16 @@ Po rozpakowaniu folderu v2.2 na serwerze APP:
     & "C:\temp\sprawdzenie\v22\scheduler\Register-SPAuditTask.ps1"
 
 Instalator poprosi lokalnie o konto i hasło. Wyniki audytu nie są publikowane na GitHubie.
+
+## v2.3 — audyt SQL lokalnie i scalanie raportów
+
+Jeśli zdalny audyt SQL z serwera APP kończy się błędem RPC/WinRM/SSL handshake, **nie trzeba ponownie skanować całej farmy**.
+
+- [Katalog v2.3](v2.3/) — lokalny kolektor SQL Server i generator scalonego HTML/MD.
+- [Instrukcja v2.3](v2.3/README.md) — wykonanie osobno na SQL i APP.
+- [Test z fikcyjnymi danymi](tests/Test-SPSESqlMerge.ps1) — regresja łączenia SQL/SharePoint bez dostępu do produkcji.
+
+Pełny audyt SharePoint i lokalny SQL są źródłami; pliki bazowe nie są nadpisywane.
 
 ## Bezpieczeństwo i ograniczenia
 
