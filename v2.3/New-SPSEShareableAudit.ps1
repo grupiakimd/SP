@@ -237,9 +237,9 @@ foreach($r in @($a|Select-Object -First $MaxRowsPerSection)){
 Tbl 'Ustawienia SQL (lokalny odczyt)' @('Parametr','Wartosc') $t $a.Count
 $a=@(Get-AuditSectionRows 'SQLStorage');$t=@()
 foreach($r in @($a|Select-Object -First $MaxRowsPerSection)){
-    $t+= , @((Alias 'DB' (F $r 'DatabaseName')),(E (F $r 'FileType') @('ROWS','LOG','FILESTREAM','FULLTEXT')),(N (F $r 'AllocatedMB')),(N (F $r 'GrowthValue')),(B (F $r 'GrowthIsPercent')),(E (F $r 'State') @('ONLINE','OFFLINE','RESTORING','RECOVERING','RECOVERY_PENDING','SUSPECT')))
+    $t+= , @((Alias 'DB' (F $r 'DatabaseName')),(E (F $r 'FileType') @('ROWS','LOG','FILESTREAM','FULLTEXT')),(N (F $r 'AllocatedMB')),(N (F $r 'GrowthValue')),(N (F $r 'GrowthMB')),(B (F $r 'GrowthIsPercent')),(E (F $r 'State') @('ONLINE','OFFLINE','RESTORING','RECOVERING','RECOVERY_PENDING','SUSPECT')))
 }
-Tbl 'Pliki SQL bez sciezek' @('DB','Typ','Allocated MB','Growth','Percent','Stan') $t $a.Count
+Tbl 'Pliki SQL bez sciezek' @('DB','Typ','Allocated MB','Growth raw','Growth MB','Percent','Stan') $t $a.Count
 
 [void]$md.Add('## Rozszerzenia, Search i workflow')
 $a=@(Get-AuditSectionRows 'ServiceApplications');$t=@()
