@@ -1,5 +1,14 @@
 # Historia wersji
 
+## v2.4 — 2026-10-15
+
+- Nowy **oddzielny** skrypt diagnostyki dla jednej witryny i listy: workflow object model 2010, subskrypcje 2013 (CSOM), konfiguracja autostartu.
+- Odczyt WFM proxy, lokalnego SPTimerV4, Timer Jobs i SMTP, opcjonalnie instancji konkretnego elementu.
+- Poufny JSON i pseudonimizowany Markdown bez adresów, nazw i surowych błędów.
+- Test składni i statyczne kontrole braku operacji modyfikujących.
+
+
+
 ## v2.3.1 — 2026-10-15 (T-SQL aliases)
 
 - **Osobny, kompletny katalog v2.3.1/** — nie nadpisuje historycznej wersji v2.3.
