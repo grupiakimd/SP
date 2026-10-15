@@ -103,8 +103,8 @@ foreach($pair in @(
 $hostName=[string](Prop $sql.Metadata 'Host')
 $existingOs=@($sp.OSInventory | Where-Object {[string](Prop $_ 'Computer') -ine $hostName})
 $existingDisks=@($sp.ServerDisks | Where-Object {[string](Prop $_ 'Computer') -ine $hostName})
-Put $sp 'OSInventory' @($existingOs)+@($sql.OSInventory)
-Put $sp 'ServerDisks' @($existingDisks)+@($sql.ServerDisks)
+Put $sp 'OSInventory' (@($existingOs)+@($sql.OSInventory))
+Put $sp 'ServerDisks' (@($existingDisks)+@($sql.ServerDisks))
 $originalErrors=@($sp.Errors)
 $localIssues=@(foreach($e in @($sql.Errors)){
     [pscustomobject]@{Section=('SQL_LOCAL_'+(Prop $e 'Section'));Message=(Prop $e 'Message');
