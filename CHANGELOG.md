@@ -1,5 +1,12 @@
 # Historia wersji
 
+## v2.3.1 — 2026-10-15 (SQL ConnectionStringBuilder)
+
+- Naprawiono `Keyword not supported: 'DataSource'` w Windows PowerShell 5.1.
+- Parametry lokalnego połączenia Shared Memory budowane z kanonicznych kluczy ADO.NET.
+- Dodano `Test-SPSESqlLocal.ps1` do szybkiego sprawdzenia instancji domyślnej, bez pełnego audytu.
+- Dodano test regresji ConnectionStringBuilder w Windows PowerShell 5.1.
+
 ## v2.3 — 2026-10-15
 
 - Niezależny lokalny skan SQL przez Shared Memory z Windows Integrated Authentication, bez WMI/WinRM z APP.
