@@ -14,6 +14,7 @@ Zestaw narzędzi **PowerShell 5.1** do inwentaryzacji istniejącej farmy SharePo
 | **v2.2** | [`v2.2/`](v2.2/) | Pełny audyt farmy i nocne uruchomienie w Harmonogramie. |
 | **v2.3** | [`v2.3/`](v2.3/) | Lokalny audyt SQL i scalanie ze SharePoint; wersja archiwalna z błędem aliasu T-SQL. |
 | **v2.3.1** | [`v2.3.1/`](v2.3.1/) | **Zalecana dla SQL.** Poprawiony alias `Clustered`, oddzielny kompletny folder i preflight test SQL. |
+| **v2.4** | [`v2.4/`](v2.4/) | **Nowe.** Diagnostyka workflow 2010/2013, autostartu, alertów SMTP i Timer Jobs jednej listy. |
 
 ![Podgląd dashboardu v2](v2/docs/dashboard_preview.png)
 
@@ -88,6 +89,12 @@ Jeśli zdalny audyt SQL z serwera APP kończy się błędem RPC/WinRM/SSL handsh
 - [Test z fikcyjnymi danymi](tests/Test-SPSESqlMerge.ps1) — regresja łączenia SQL/SharePoint bez dostępu do produkcji.
 
 Pełny audyt SharePoint i lokalny SQL są źródłami; pliki bazowe nie są nadpisywane.
+
+## v2.4 — diagnozowanie niedziałających powiadomień z list
+
+Oddzielny, tylko odczytujący skrypt [Invoke-SPWorkflowDiagnostic.ps1](v2.4/Invoke-SPWorkflowDiagnostic.ps1) bada jedno wskazane miejsce, nie całą farmę. Zbiera zarówno starsze powiązania SharePoint 2010, jak i osobne subskrypcje workflow 2013, autostart i wykonania wskazanego elementu, timer jobs, proxy Workflow Manager oraz konfigurację poczty. Tworzy **poufny JSON** i **pseudonimizowany MD**.
+
+[Instrukcja v2.4](v2.4/README.md).
 
 ## Bezpieczeństwo i ograniczenia
 
