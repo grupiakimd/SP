@@ -76,6 +76,14 @@ $mappedDb=@(foreach($r in @($sql.SQLDatabases)){
     Put $x 'IsSharePointDB' ($expected.ContainsKey($name.ToLowerInvariant()))
     $x
 })
+$matchedNames=@($mappedDb | Where-Object {$_.IsSharePointDB} | ForEach-Object { [string]$_.Name })
+if($expected.Count -gt 0 -and $matchedNames.Count -eq 0){
+    throw 'ZABLOKOWANO SCALANIE: na lokalnym SQL nie znaleziono zadnej bazy znanej farmie SharePoint. Zweryfikuj instancje!'
+}
+$missingSpDbs=@($expected.Keys | Where-Object { $_ -notin @($matchedNames | ForEach-Object { $_.ToLowerInvariant() }) })
+if($missingSpDbs.Count -gt 0) {
+    Write-Warning ("Brakuje {0} baz SharePoint na lokalnej instancji SQL. Wynik bedzie oznaczony jako niekompletny." -f $missingSpDbs.Count)
+}
 $mappedBackup=@(foreach($r in @($sql.SQLBackupHistory)){
     $x=$r.PSObject.Copy()
     Put $x 'SQLInstance' $referenceSQL
@@ -119,7 +127,16 @@ if(-not $aliasMatched -and $knownSPNames.Count -gt 0){
         Recommendation='Uruchom scalanie ponownie z -SqlInstanceAlias jezeli instancja korzysta z aliasu.'
     }
 }
-foreach($db in $mappedDb | Where-Object {$_.IsSharePointDB}){
+if([string](Prop $sql.Metadata 'SQLStatus') -ne 'OK'){
+    $risks+= [pscustomobject]@{Priority='UNKNOWN';Code='LOCAL_SQL_AUDIT_PARTIAL';Object='Local SQL'
+       Observation='Lokalny audyt SQL zawiera bledy zbierania.';Recommendation='Sprawdz SQLInventory.json: Errors.'}
+}
+if($missingSpDbs.Count -gt 0){
+    $risks+= [pscustomobject]@{Priority='HIGH';Code='SQL_SP_DATABASES_MISSING';Object='Local SQL'
+       Observation=('Nie odnaleziono lokalnie '+$missingSpDbs.Count+' baz SharePoint.')
+       Recommendation='Zweryfikuj instancje, nazwy i baze; mozliwa druga instancja SQL.'}
+}
+foreach($db in @($mappedDb | Where-Object {$_.IsSharePointDB})){
     if($db.State -ne 'ONLINE'){
         $risks+= [pscustomobject]@{Priority='HIGH';Code='SQL_DB_NOT_ONLINE';Object=$db.Name;
             Observation=('Lokalny SQL stan bazy: '+$db.State);Recommendation='Wyjasnic przed migracja.'}
@@ -142,6 +159,7 @@ Put $sp.Metadata 'SQLAuditSourceTime' ([string]$sql.Metadata.ExecutedAt)
 Put $sp.Metadata 'SQLAuditStatus' ([string]$sql.Metadata.SQLStatus)
 Put $sp.Metadata 'SQLAuditOriginalRemoteErrors' (@($originalErrors | Where-Object {$_.Section -in @('SQLInventory','SQLBackupHistory')}).Count)
 Put $sp.Metadata 'SQLAuditLocalErrors' (@($localIssues).Count)
+Put $sp.Metadata 'SQLMissingFarmDatabases' $missingSpDbs.Count
 Put $sp.Metadata 'SQLInstancesDiscovered' $mappedInstances.Count
 Put $sp.Metadata 'SQLInstanceAliasConfirmed' $aliasMatched
 Put $sp.Metadata 'ReadinessScore' 'NOT_SCORED_INCOMPLETE_EVIDENCE'
