@@ -6,6 +6,24 @@ Ten mechanizm NIE zastępuje weryfikacji technicznej połączenia aplikacji Shar
 
 ## Co uruchomić na którym serwerze
 
+## Poprawka v2.3.1 — błąd DataSource
+
+W pierwotnym `Collect-SPSESqlLocal.ps1` PowerShell 5.1 zwracał `Keyword not supported: 'DataSource'`. To błąd zapisu klucza ConnectionStringBuilder w skrypcie, a nie dowód niedostępności SQL ani problem uprawnień. Poprawiono użycie kanonicznego klucza `Data Source`.
+
+Najpierw skopiuj **nowe pliki** z GitHub (zwykłe Code → Download ZIP, nie Invoke-WebRequest) na serwer SQL. Możesz uruchomić szybki test domyślnej instancji bez podawania nazwy:
+
+```powershell
+& "C:\temp\SP-main\v2.3\Test-SPSESqlLocal.ps1"
+```
+
+Oczekiwany komunikat: `SQL CONNECTED: <wersja>`. Następnie pełny lokalny audyt:
+
+```powershell
+& "C:\temp\SP-main\v2.3\Collect-SPSESqlLocal.ps1" -OutputRoot "C:\temp\SPSE_SQL_Audit"
+```
+
+Parametr `-InstanceName` jest opcjonalny i domyślnie przyjmuje `MSSQLSERVER`. Jeśli test się nie powiedzie, sprawdź `Get-Service MSSQLSERVER` (na rzeczywistym serwerze SQL). Test i audyt nie restartują usług i nie zmieniają baz.
+
 ### A. SQL Server 2019 (bezpośrednio na maszynie SQL)
 
 Skopiuj tylko plik `Collect-SPSESqlLocal.ps1` na serwer baz. W **Windows PowerShell 5.1 x64**, na koncie z uprawnieniami `sysadmin`:
