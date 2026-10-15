@@ -17,7 +17,7 @@ if(-not $collector.Contains('AS [Clustered]') -or -not $preflight.Contains('AS [
     throw 'Unquoted SQL reserved alias CLUSTERED in collector or preflight.'
 }
 if($collector.Contains(' AS Clustered,') -or $collector.Contains(' type AS Type,') -or
-   -not $collector.Contains("$"+"b['Data Source']")){
+   -not $collector.Contains('$b[''Data Source'']')){
     throw 'SQL local query or connection builder regressed.'
 }
 $root=Join-Path ([IO.Path]::GetTempPath()) ('SPSE_SQL_MERGE_TEST_'+[guid]::NewGuid().ToString('N'))
