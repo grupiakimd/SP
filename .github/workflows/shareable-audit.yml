@@ -5,12 +5,16 @@ on:
       - 'v2.2/**'
       - 'tests/Test-ShareableAudit.ps1'
       - 'tests/Test-SPAuditScheduler.ps1'
+      - 'tests/Test-SPSESqlMerge.ps1'
+      - 'v2.3/**'
       - '.github/workflows/shareable-audit.yml'
   pull_request:
     paths:
       - 'v2.2/**'
       - 'tests/Test-ShareableAudit.ps1'
       - 'tests/Test-SPAuditScheduler.ps1'
+      - 'tests/Test-SPSESqlMerge.ps1'
+      - 'v2.3/**'
       - '.github/workflows/shareable-audit.yml'
 jobs:
   privacy-smoke:
@@ -20,6 +24,9 @@ jobs:
       - name: PowerShell 5.1 parser and scheduled-task checks
         shell: powershell
         run: .\tests\Test-SPAuditScheduler.ps1
+      - name: PowerShell 5.1 SQL merge and report regression test
+        shell: powershell
+        run: .\tests\Test-SPSESqlMerge.ps1
       - name: PowerShell 5.1 privacy regression test
         shell: powershell
         run: .\tests\Test-ShareableAudit.ps1
