@@ -1,5 +1,15 @@
 # Historia wersji
 
+## v2.3 — 2026-10-15
+
+- Niezależny lokalny skan SQL przez Shared Memory z Windows Integrated Authentication, bez WMI/WinRM z APP.
+- Weryfikacja bazy SharePoint przed scaleniem: blokada importu niewłaściwej instancji i ostrzeżenie o brakach baz.
+- Jeden połączony HTML z dodatkowymi sekcjami SQLSettings/SQLStorage oraz pseudonimizowany MD.
+- Oryginalne raporty pozostają nienaruszone; zachowana informacja o błędach i pochodzeniu danych.
+- Test regresyjny syntetycznego scalenia w Windows PowerShell 5.1.
+
+
+
 ## v2.2.1 — nocny harmonogram (2026-10-13)
 
 - Folder `v2.2/scheduler/` z gotowym skryptem nocnym i instalatorem Task Scheduler.
