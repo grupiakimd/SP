@@ -3,12 +3,22 @@ $ErrorActionPreference='Stop'
 Set-StrictMode -Version 2.0
 $repoRoot=Split-Path -Parent $PSScriptRoot
 $files=@('v2.3.1\Collect-SPSESqlLocal.ps1','v2.3.1\Merge-SPSEAudit.ps1',
-    'v2.3.1\New-SPSEDashboard.ps1','v2.3.1\New-SPSEShareableAudit.ps1')
+    'v2.3.1\New-SPSEDashboard.ps1','v2.3.1\New-SPSEShareableAudit.ps1',
+    'v2.3.1\Test-SPSESqlLocal.ps1')
 foreach($file in $files){
     $full=Join-Path $repoRoot $file
     $tokens=$null;$errors=$null
     [void][Management.Automation.Language.Parser]::ParseFile($full,[ref]$tokens,[ref]$errors)
     if(@($errors).Count -gt 0){throw ("Parse error in {0}: {1}" -f $file,(@($errors|ForEach-Object {$_.Message}) -join '; '))}
+}
+$collector=Get-Content -LiteralPath (Join-Path $repoRoot 'v2.3.1\Collect-SPSESqlLocal.ps1') -Raw -Encoding UTF8
+$preflight=Get-Content -LiteralPath (Join-Path $repoRoot 'v2.3.1\Test-SPSESqlLocal.ps1') -Raw -Encoding UTF8
+if(-not $collector.Contains('AS [Clustered]') -or -not $preflight.Contains('AS [Clustered]')){
+    throw 'Unquoted SQL reserved alias CLUSTERED in collector or preflight.'
+}
+if($collector.Contains(' AS Clustered,') -or $collector.Contains(' type AS Type,') -or
+   -not $collector.Contains("$"+"b['Data Source']")){
+    throw 'SQL local query or connection builder regressed.'
 }
 $root=Join-Path ([IO.Path]::GetTempPath()) ('SPSE_SQL_MERGE_TEST_'+[guid]::NewGuid().ToString('N'))
 $spDir=Join-Path $root 'sp';$sqlDir=Join-Path $root 'sql';$out=Join-Path $root 'output'
