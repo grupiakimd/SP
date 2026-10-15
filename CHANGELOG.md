@@ -1,5 +1,14 @@
 # Historia wersji
 
+## v2.3.1 — 2026-10-15 (T-SQL aliases)
+
+- **Osobny, kompletny katalog v2.3.1/** — nie nadpisuje historycznej wersji v2.3.
+- Korekta `AS Clustered` → `AS [Clustered]`, dodatkowo zabezpieczenie aliasów `Type` i `State`.
+- Rozszerzenie `Test-SPSESqlLocal.ps1`: sprawdza też zapytanie `SERVERPROPERTY` z aliasem `Clustered`, nie tylko połączenie.
+- Test regresyjny i workflow PowerShell 5.1 dla izolowanej wersji.
+
+
+
 ## v2.3.1 — 2026-10-15 (SQL ConnectionStringBuilder)
 
 - Naprawiono `Keyword not supported: 'DataSource'` w Windows PowerShell 5.1.
