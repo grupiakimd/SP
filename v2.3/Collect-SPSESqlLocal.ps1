@@ -55,7 +55,10 @@ function Query([string]$Sql,[string]$Database='master'){
                 $row=[ordered]@{}
                 for($ix=0;$ix -lt $reader.FieldCount;$ix++){
                     $field=$reader.GetName($ix)
-                    $row[$field]=if($reader.IsDBNull($ix)){$null}else{$reader.GetValue($ix)}
+                    $row[$field]=if($reader.IsDBNull($ix)){$null}else{
+                        $value=$reader.GetValue($ix)
+                        if($value -is [datetime]){$value.ToString('s')}else{$value}
+                    }
                 }
                 [pscustomobject]$row
             }
@@ -138,6 +141,7 @@ Capture-Section 'SQLStorage' {
 SELECT DB_NAME(mf.database_id) AS DatabaseName, mf.type_desc AS FileType,
  CAST(mf.size*8.0/1024 AS decimal(19,2)) AS AllocatedMB,
  mf.growth AS GrowthValue, mf.is_percent_growth AS GrowthIsPercent,
+ CASE WHEN mf.is_percent_growth=0 THEN CAST(mf.growth*8.0/1024 AS decimal(19,2)) ELSE NULL END AS GrowthMB,
  mf.max_size AS MaxSizePages, mf.state_desc AS State
 FROM sys.master_files mf
 ORDER BY mf.database_id,mf.file_id;
