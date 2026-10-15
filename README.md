@@ -16,7 +16,7 @@ Zestaw narzędzi **PowerShell 5.1** do inwentaryzacji istniejącej farmy SharePo
 
 ![Podgląd dashboardu v2](v2/docs/dashboard_preview.png)
 
-Wersje pozostają **oddzielne i nie są nadpisywane**. **Używaj `v2.2`** — `v2` jest pozostawiona jako historia zmian.
+Wersje pozostają **oddzielne i nie są nadpisywane**. **Używaj `v2.2` do pełnego skanu SharePoint, a `v2.3` do lokalnego SQL i scalania wyników**. Starsze wersje pozostają jako historia.
 
 ## Szybki start — v2.2
 
