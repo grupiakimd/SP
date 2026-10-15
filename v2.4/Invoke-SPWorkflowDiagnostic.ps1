@@ -193,6 +193,8 @@ $md=@(
   ('- Legacy autostart create: **{0}**' -f @($activeLegacy | Where-Object {$_.AutoStartCreate}).Count)
   ('- Legacy autostart change: **{0}**' -f @($activeLegacy | Where-Object {$_.AutoStartChange}).Count)
   ('- Subskrypcje 2013: **{0}**, enabled: **{1}**' -f $wf13.Count,$active2013.Count)
+  ('- Subskrypcje 2013 Enabled + ItemAdded: **{0}**' -f @($active2013 | Where-Object {$_.EventTypes -contains 'ItemAdded'}).Count)
+  ('- Subskrypcje 2013 Enabled + ItemUpdated: **{0}**' -f @($active2013 | Where-Object {$_.EventTypes -contains 'ItemUpdated'}).Count)
   ('- Proxy WFM present: **{0}**' -f $diag.WorkflowProxy.Available)
   ('- Proxy WFM status: **{0}**' -f $diag.WorkflowProxy.Status)
   ('- SMTP skonfigurowany: **{0}**' -f $diag.Mail.WebAppMailConfigured)
@@ -201,6 +203,8 @@ $md=@(
   ('- Timer jobs z alertami: **{0}**, disabled: **{1}**' -f $immediate.Count,@($immediate|Where-Object {$_.Disabled}).Count)
   ('- Workflow legacy instances for item (if requested): **{0}**' -f @($diag.LegacyInstances).Count)
   ('- Workflow 2013 instances for item (if requested): **{0}**' -f @($diag.Workflow2013Instances).Count)
+  ('- Legacy instances with Failure/Error/Fault: **{0}**' -f @($diag.LegacyInstances | Where-Object {$_.InternalState -match '(?i)fail|fault|error'}).Count)
+  ('- 2013 instances Suspended/Terminated: **{0}**' -f @($diag.Workflow2013Instances | Where-Object {$_.Status -match '(?i)suspend|terminat'}).Count)
   ('- Errors: **{0}** (tylko liczba, bez tresci)' -f $errs.Count)
   ''
   '## Coverage'
