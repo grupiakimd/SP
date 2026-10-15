@@ -1,5 +1,14 @@
 # Historia wersji
 
+## v2.4.2 — 2026-10-15
+
+- Niezależny generator raportu HTML z istniejącego audytu v2.4.1 (bez ponownego skanowania).
+- Dashboard: karty, widok list, filtrowanie i stan workflow 2010/2013 z wyraźnym oznaczeniem niekompletnych danych.
+- Dane poufne pozostają lokalnie; raport HTML bez bibliotek, skryptów i połączeń zewnętrznych.
+- Test syntetyczny Windows PowerShell 5.1: ochrona dynamicznych nazw przed wstrzykiwaniem HTML i weryfikacja sekcji.
+
+
+
 ## v2.4.1 — 2026-10-15
 
 - Oddzielny skrypt audytu workflow całej witryny SPWeb, bez podawania listy.
