@@ -1,6 +1,10 @@
 # Nigdy nie publikuj wyników inwentaryzacji produkcyjnej
 SP2019_Audit_*/
 SP2019_Audit_*.zip
+**/SQLInventory.json
+**/MergeStatus.txt
+**/SPSE_Readiness_Report_MERGED.html
+**/SP_Audit_SHAREABLE_MERGED.md
 **/SP_Audit_SHAREABLE_*.md
 **/Audit_for_review.md
 **/FullInventory.json
