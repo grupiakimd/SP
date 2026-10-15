@@ -12,11 +12,12 @@ Zestaw narzędzi **PowerShell 5.1** do inwentaryzacji istniejącej farmy SharePo
 | **v2.0** | [`v2/`](v2/) | Pierwszy interaktywny dashboard HTML offline; wersja archiwalna. |
 | **v2.1** | [`v2.1/`](v2.1/) | Naprawiony eksport HTML, automatyczne wykrywanie przebiegu, odzyskiwanie z CSV. |
 | **v2.2** | [`v2.2/`](v2.2/) | Pełny audyt farmy i nocne uruchomienie w Harmonogramie. |
-| **v2.3** | [`v2.3/`](v2.3/) | **Nowe.** Lokalny audyt SQL i scalanie ze SharePoint do HTML/MD. |
+| **v2.3** | [`v2.3/`](v2.3/) | Lokalny audyt SQL i scalanie ze SharePoint; wersja archiwalna z błędem aliasu T-SQL. |
+| **v2.3.1** | [`v2.3.1/`](v2.3.1/) | **Zalecana dla SQL.** Poprawiony alias `Clustered`, oddzielny kompletny folder i preflight test SQL. |
 
 ![Podgląd dashboardu v2](v2/docs/dashboard_preview.png)
 
-Wersje pozostają **oddzielne i nie są nadpisywane**. **Używaj `v2.2` do pełnego skanu SharePoint, a `v2.3` do lokalnego SQL i scalania wyników**. Starsze wersje pozostają jako historia.
+Wersje pozostają **oddzielne i nie są nadpisywane**. **Używaj `v2.2` do pełnego skanu SharePoint, a `v2.3.1` do lokalnego SQL i scalania wyników**. Starsze wersje pozostają jako historia.
 
 ## Szybki start — v2.2
 
@@ -64,6 +65,19 @@ Po rozpakowaniu folderu v2.2 na serwerze APP:
     & "C:\temp\sprawdzenie\v22\scheduler\Register-SPAuditTask.ps1"
 
 Instalator poprosi lokalnie o konto i hasło. Wyniki audytu nie są publikowane na GitHubie.
+
+## v2.3.1 — SQL po poprawce
+
+Lokalny audyt SQL w oddzielnym folderze **[v2.3.1/](v2.3.1/)**. Naprawiono składnię zapytania z `Clustered`. Pobierz całość przez **Code → Download ZIP** i używaj plików wyłącznie z `v2.3.1`, nie z `v2.3`.
+
+Po skopiowaniu na SQL:
+
+```powershell
+& "C:\temp\SP-main\v2.3.1\Test-SPSESqlLocal.ps1"
+& "C:\temp\SP-main\v2.3.1\Collect-SPSESqlLocal.ps1" -OutputRoot "C:\temp\SPSE_SQL_Audit"
+```
+
+[Pełna instrukcja v2.3.1](v2.3.1/README.md).
 
 ## v2.3 — audyt SQL lokalnie i scalanie raportów
 
