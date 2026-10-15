@@ -16,6 +16,7 @@ Zestaw narzędzi **PowerShell 5.1** do inwentaryzacji istniejącej farmy SharePo
 | **v2.3.1** | [`v2.3.1/`](v2.3.1/) | **Zalecana dla SQL.** Poprawiony alias `Clustered`, oddzielny kompletny folder i preflight test SQL. |
 | **v2.4** | [`v2.4/`](v2.4/) | **Nowe.** Diagnostyka workflow 2010/2013, autostartu, alertów SMTP i Timer Jobs jednej listy. |
 | **v2.4.1** | [`v2.4.1/`](v2.4.1/) | **Nowe.** Diagnostyka jednej witryny bez ListTitle, workflow 2010 site/list i 2013 subskrypcje. |
+| **v2.4.2** | [`v2.4.2/`](v2.4.2/) | **Nowe.** Wizualny HTML z istniejącego raportu WorkflowSite_PRIVATE.json, bez ponownego skanowania. |
 
 ![Podgląd dashboardu v2](v2/docs/dashboard_preview.png)
 
@@ -96,6 +97,16 @@ Pełny audyt SharePoint i lokalny SQL są źródłami; pliki bazowe nie są nadp
 Oddzielny, tylko odczytujący skrypt [Invoke-SPWorkflowDiagnostic.ps1](v2.4/Invoke-SPWorkflowDiagnostic.ps1) bada jedno wskazane miejsce, nie całą farmę. Zbiera zarówno starsze powiązania SharePoint 2010, jak i osobne subskrypcje workflow 2013, autostart i wykonania wskazanego elementu, timer jobs, proxy Workflow Manager oraz konfigurację poczty. Tworzy **poufny JSON** i **pseudonimizowany MD**.
 
 [Instrukcja v2.4](v2.4/README.md).
+
+## Graficzny dashboard workflow — v2.4.2
+
+Jeśli wykonałeś v2.4.1 i otrzymałeś tylko JSON + MD, możesz wygenerować [dashboard offline](v2.4.2/README.md) bez ponownego skanowania:
+
+```powershell
+& "C:\temp\SP-main\v2.4.2\New-SPWorkflowDashboard.ps1" -InputPath "C:\SP_Workflow_Diagnostic"
+```
+
+Otwórz powstały `WorkflowSite_Dashboard.html` lokalnie w przeglądarce. HTML zawiera prawdziwe nazwy list i workflow; do przekazania do analizy użyj wyłącznie przejrzanego `WorkflowSite_SHAREABLE.md`.
 
 ## Bezpieczeństwo i ograniczenia
 
