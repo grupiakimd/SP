@@ -217,3 +217,16 @@ $summary=Join-Path $dir 'WorkflowTroubleshoot_SHAREABLE.md'
 Write-Host ('PRIVATE: '+$private) -ForegroundColor Yellow
 Write-Host ('SHAREABLE: '+$summary) -ForegroundColor Green
 Write-Host ('2010: {0}; 2013: {1}; errors: {2}' -f $legacy.Count,$wfm.Count,$errors.Count)
+
+# Render the confidential, graphical offline dashboard next to this run's JSON.
+$dashboardGenerator=Join-Path $PSScriptRoot 'New-SPWorkflowTroubleshootDashboard.ps1'
+if(Test-Path -LiteralPath $dashboardGenerator -PathType Leaf) {
+  try {
+    & $dashboardGenerator -InputPath $private -ErrorAction Stop
+  } catch {
+    Write-Warning ('Nie udalo sie utworzyc dashboardu HTML: '+$_.Exception.Message)
+    Write-Warning 'JSON i Markdown pozostaja dostepne. Uruchom generator samodzielnie na tym JSON.'
+  }
+} else {
+  Write-Warning 'Brak generatora HTML obok skryptu. Pobierz aktualny folder Workflow-Troubleshooting/v1.'
+}
