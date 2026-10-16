@@ -1,44 +1,61 @@
-# SharePoint 2019 - targeted workflow troubleshooting (v1)
+# Diagnostyka workflow SharePoint 2019 - v1 z panelem graficznym
 
-This is a separate read-only incident diagnostic, not the farm inventory or migration dashboard.
+Zestaw narzedzi tylko do odczytu. Dotyczy jednej witryny i jednej listy: workflow 2010/2013, instancje na wybranych elementach, konfiguracja i lokalne logi ULS. Bez zmian w farmie, bez uruchamiania workflow, bez wysylania maili.
 
-## Scope
-One SPWeb and one list, selected by URL. Reads:
-- SharePoint build and workflow security/compatibility settings (including 53601).
-- 2010-style workflow associations on the list and its content types.
-- 2013-style Workflow Manager subscriptions (CSOM).
-- Existing instances on the newest three items, or on a selected item (-ItemId).
-- Workflow Manager proxy, local timer service and recent local ULS workflow warnings/errors.
+## A. Masz juz pliki JSON i .md? Wykonaj tylko to
 
-No changes to the farm, web.config, IIS, workflow definitions, item content, SMTP or services. No new list items or test email are sent. Output files are written only to a local folder.
+Nie powtarzaj audytu. Pobierz aktualny folder Workflow-Troubleshooting/v1 z repo (GitHub -> Code -> Download ZIP). Skopiuj plik New-SPWorkflowTroubleshootDashboard.ps1 na komputer z PowerShell 5.1, np. do C:\Temp\SP-main\Workflow-Troubleshooting\v1\.
 
-## Run
-1. GitHub: Code -> Download ZIP. Copy the Workflow-Troubleshooting/v1 folder onto an APP SharePoint server.
-2. Open SharePoint Management Shell (Windows PowerShell 5.1 x64) as an authorized SharePoint administrator.
-3. Change the two example URLs below to your real SPWeb URL and the usual list/view URL.
+Uruchom:
 
-    Set-ExecutionPolicy -Scope Process Bypass -Force
-    & 'C:\Temp\SP-main\Workflow-Troubleshooting\v1\Invoke-SPWorkflowTroubleshoot.ps1' -WebUrl 'https://sharepoint/sites/example' -ListUrl 'https://sharepoint/sites/example/Lists/Requests/AllItems.aspx'
+~~~powershell
+Set-ExecutionPolicy -Scope Process Bypass -Force
+& 'C:\Temp\SP-main\Workflow-Troubleshooting\v1\New-SPWorkflowTroubleshootDashboard.ps1' -InputPath 'C:\SP_Workflow_Troubleshooting'
+~~~
 
-If you know the ID of an item where the workflow should have run, add -ItemId 123 -LogHours 6. This is preferred for a focused failure investigation.
+Generator automatycznie wybierze najnowszy WorkflowTroubleshoot_PRIVATE.json w podkatalogach Run_* i stworzy **WorkflowTroubleshoot_Dashboard.html** w tym samym katalogu. Otworz HTML dwuklikiem w Edge lub Chrome.
 
-## Files
-Output defaults to C:\SP_Workflow_Troubleshooting\Run_YYYYMMDD_HHMMSS:
-- WorkflowTroubleshoot_PRIVATE.json: sensitive raw URLs, names, instance IDs, ULS details. Keep private.
-- WorkflowTroubleshoot_SHAREABLE.md: pseudonymized counts and statuses. Review manually before sharing.
+Mozna wskazac konkretny JSON:
 
-Never commit results to a public GitHub repository.
+~~~powershell
+& 'C:\Temp\SP-main\Workflow-Troubleshooting\v1\New-SPWorkflowTroubleshootDashboard.ps1' -InputPath 'C:\SP_Workflow_Troubleshooting\Run_YYYYMMDD_HHMMSS\WorkflowTroubleshoot_PRIVATE.json'
+~~~
 
-## Important limitations
-- 2013 instances returned by CSOM are not a guaranteed complete history. Zero returned is not proof of zero executions.
-- ULS is collected from only the server where the script is run, for the selected lookback period.
-- Errors in any section are shown in PRIVATE.json; an unsuccessful check is not equivalent to a zero count.
-- Flag 53601 is for Classic Workflow Manager only. Absence does not automatically require remediation.
-- The pre-parse security check should not be disabled just to force legacy workflows to run.
+Generator nie wymaga serwera SharePoint, polaczenia z farma ani dostepu do Internetu. Tylko odczytuje JSON i zapisuje HTML lokalnie.
 
-Official reference for build 16.0.10417.20198 (KB5002894):
-https://support.microsoft.com/en-us/servicing/office/hotfix/sharepoint/5002894
+## B. Kolejne uruchomienia audytu
 
-CSOM methods:
-https://learn.microsoft.com/en-us/previous-versions/office/sharepoint-csom/dn624352(v=office.15)
-https://learn.microsoft.com/en-us/previous-versions/office/sharepoint-csom/dn624289(v=office.15)
+Nowa wersja Invoke-SPWorkflowTroubleshoot.ps1 automatycznie generuje dashboard HTML po zapisaniu raportu, jesli oba skrypty znajduja sie w tym samym folderze:
+
+~~~powershell
+Set-ExecutionPolicy -Scope Process Bypass -Force
+& 'C:\Temp\SP-main\Workflow-Troubleshooting\v1\Invoke-SPWorkflowTroubleshoot.ps1' -WebUrl 'https://sharepoint/sites/example' -ListUrl 'https://sharepoint/sites/example/Lists/Requests/AllItems.aspx' -LogHours 6
+~~~
+
+Dla znanego nieudanego elementu uzyj dodatkowo -ItemId 123.
+
+Skrypt audytowy wymaga Windows PowerShell 5.1 x64, SharePoint Management Shell oraz uprawnien do odczytu listy i farmy.
+
+## C. Co pokazuje dashboard
+
+- Liczniki workflow 2010 i 2013, aktywnych definicji, instancji i bledow ULS.
+- Graficzny przebieg: zapis listy -> wyzwalacz -> silnik -> e-mail.
+- Tabela workflow z wyszukiwaniem i sposobem wyzwalania.
+- Istniejace instancje i ich stany na sprawdzonych elementach.
+- Przeglad ustawien bezpieczenstwa i zgodnosci (w tym 53601).
+- Lokalny ULS, filtrowanie komunikatow i identyfikatory Correlation ID.
+- Wskazowki diagnostyczne zalezne od zebranych danych (nie automatyczna diagnoza przyczyny).
+
+## D. Ochrona danych
+
+- **WorkflowTroubleshoot_Dashboard.html** — POUFNY, zawiera wewnetrzne nazwy, URL oraz komunikaty ULS. Tylko lokalnie; nie publikuj go w GitHub.
+- **WorkflowTroubleshoot_PRIVATE.json** — POUFNY, zachowaj lokalnie.
+- **WorkflowTroubleshoot_SHAREABLE.md** — skrocony, pseudonimizowany; sprawdz recznie przed przeslaniem.
+
+Dashboard jest w jednym HTML: dziala offline, bez CDN i bibliotek zewnetrznych. Sekcje workflow 2013, ktorych nie udalo sie odczytac, nie sa falszywie oznaczane jako pewne zero. ULS obejmuje wylacznie serwer zbierajacy dane oraz zadany okres czasu. Brak instancji w probce nie oznacza braku uruchomien.
+
+## E. Nawiązanie do aktualizacji
+
+Build 16.0.10417.20198 (KB5002894) uzasadnia analize zachowania starszych workflow. Potencjalna zgodnosc z Classic Workflow Manager wymaga potwierdzenia faktycznej wersji WFM; nie ustawiaj automatycznie flagi 53601 i nie wylaczaj mechanizmu zabezpieczen.
+
+Dokumentacja Microsoft: https://support.microsoft.com/en-us/servicing/office/hotfix/sharepoint/5002894
