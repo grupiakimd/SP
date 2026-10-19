@@ -11,11 +11,13 @@ on:
       - 'tests/Test-SPWorkflowDiagnostic.ps1'
       - 'tests/Test-SPWorkflowSiteDiagnostic.ps1'
       - 'tests/Test-SPWorkflowDashboard.ps1'
+      - 'tests/Test-SPWorkflowMigrationV25.ps1'
       - 'v2.3/**'
       - 'v2.3.1/**'
       - 'v2.4/**'
       - 'v2.4.1/**'
       - 'v2.4.2/**'
+      - 'v2.5/**'
       - '.github/workflows/shareable-audit.yml'
   pull_request:
     paths:
@@ -28,11 +30,13 @@ on:
       - 'tests/Test-SPWorkflowDiagnostic.ps1'
       - 'tests/Test-SPWorkflowSiteDiagnostic.ps1'
       - 'tests/Test-SPWorkflowDashboard.ps1'
+      - 'tests/Test-SPWorkflowMigrationV25.ps1'
       - 'v2.3/**'
       - 'v2.3.1/**'
       - 'v2.4/**'
       - 'v2.4.1/**'
       - 'v2.4.2/**'
+      - 'v2.5/**'
       - '.github/workflows/shareable-audit.yml'
 jobs:
   privacy-smoke:
@@ -45,6 +49,9 @@ jobs:
       - name: PowerShell 5.1 SQL connection builder regression test
         shell: powershell
         run: .\tests\Test-SPSESqlBuilder.ps1
+      - name: PowerShell 5.1 workflow migration v2.5 inventory and report regression
+        shell: powershell
+        run: .\tests\Test-SPWorkflowMigrationV25.ps1
       - name: PowerShell 5.1 offline workflow HTML generation
         shell: powershell
         run: .\tests\Test-SPWorkflowDashboard.ps1
