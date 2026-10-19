@@ -17,6 +17,7 @@ Zestaw narzędzi **PowerShell 5.1** do inwentaryzacji istniejącej farmy SharePo
 | **v2.4** | [`v2.4/`](v2.4/) | **Nowe.** Diagnostyka workflow 2010/2013, autostartu, alertów SMTP i Timer Jobs jednej listy. |
 | **v2.4.1** | [`v2.4.1/`](v2.4.1/) | **Nowe.** Diagnostyka jednej witryny bez ListTitle, workflow 2010 site/list i 2013 subskrypcje. |
 | **v2.4.2** | [`v2.4.2/`](v2.4.2/) | **Nowe.** Wizualny HTML z istniejącego raportu WorkflowSite_PRIVATE.json, bez ponownego skanowania. |
+| **v2.5** | [`v2.5/`](v2.5/) | **Aktualne: workflow migration.** Szczegółowa inwentaryzacja definicji XOML/XAML, potencjalne rodziny i raport HTML/MD. |
 
 ![Podgląd dashboardu v2](v2/docs/dashboard_preview.png)
 
@@ -107,6 +108,12 @@ Jeśli wykonałeś v2.4.1 i otrzymałeś tylko JSON + MD, możesz wygenerować [
 ```
 
 Otwórz powstały `WorkflowSite_Dashboard.html` lokalnie w przeglądarce. HTML zawiera prawdziwe nazwy list i workflow; do przekazania do analizy użyj wyłącznie przejrzanego `WorkflowSite_SHAREABLE.md`.
+
+## v2.5 — analiza definicji workflow przed migracją do SE (on-premises)
+
+Na istniejącym APP SharePoint 2019 wykonaj [Collect-SPWorkflowDefinitions.ps1](v2.5/Collect-SPWorkflowDefinitions.ps1) dla wskazanej witryny, a później [New-SPWorkflowMigrationReport.ps1](v2.5/New-SPWorkflowMigrationReport.ps1), aby dostać **jeden lokalny HTML** i **pseudonimizowany MD**. Skrypt identyfikuje włączone powiązania, dostępne artefakty XOML i XAML oraz hipotezy rodzin powtarzalnych procesów. Nie uruchamia ani nie konwertuje workflow.
+
+Pełna [instrukcja v2.5](v2.5/README.md).
 
 ## Bezpieczeństwo i ograniczenia
 
