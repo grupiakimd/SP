@@ -1,5 +1,13 @@
 # Historia wersji
 
+## v2.5.1 — 2026-10-19
+
+- Osobny, kompletny folder wydania, bez nadpisywania v2.5.
+- UTF-8 BOM w kazdym pliku .ps1 dla zgodnosci Windows PowerShell 5.1.
+- Jawne cytowanie tabel Markdown; HTML oraz MD z istniejacego prywatnego JSON, bez ponownego skanu farmy.
+- Test regresji sprawdzajacy BOM, parser PS5.1 i generowanie raportow.
+
+
 ## v2.5 — 2026-10-19
 
 - Oddzielna wersja on-prem do zbierania definicji SharePoint workflow 2010 (SPWorkflowAssociation, XOML) i 2013 (CSOM/XAML).
