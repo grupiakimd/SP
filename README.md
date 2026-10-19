@@ -111,7 +111,7 @@ Otwórz powstały `WorkflowSite_Dashboard.html` lokalnie w przeglądarce. HTML z
 
 ## v2.5 — analiza definicji workflow przed migracją do SE (on-premises)
 
-Na istniejącym APP SharePoint 2019 wykonaj [Collect-SPWorkflowDefinitions.ps1](v2.5/Collect-SPWorkflowDefinitions.ps1) dla wskazanej witryny, a później [New-SPWorkflowMigrationReport.ps1](v2.5/New-SPWorkflowMigrationReport.ps1), aby dostać **jeden lokalny HTML** i **pseudonimizowany MD**. Skrypt identyfikuje włączone powiązania, dostępne artefakty XOML i XAML oraz hipotezy rodzin powtarzalnych procesów. Nie uruchamia ani nie konwertuje workflow.
+Na istniejącym APP SharePoint 2019 uruchom **jeden** [Invoke-SPWorkflowMigrationAudit.ps1](v2.5/Invoke-SPWorkflowMigrationAudit.ps1). Wrapper wykona [inwentaryzację](v2.5/Collect-SPWorkflowDefinitions.ps1) i automatycznie zbuduje lokalny HTML oraz pseudonimizowany MD za pomocą [generatora](v2.5/New-SPWorkflowMigrationReport.ps1). Skrypt identyfikuje włączone powiązania, dostępne artefakty XOML i XAML oraz hipotezy rodzin powtarzalnych procesów. Nie uruchamia ani nie konwertuje workflow.
 
 Pełna [instrukcja v2.5](v2.5/README.md).
 
