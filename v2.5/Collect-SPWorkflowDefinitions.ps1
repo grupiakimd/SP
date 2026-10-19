@@ -77,7 +77,7 @@ function Inspect-Markup([string]$text,[string]$kind){
   $settings.MaxCharactersFromEntities=0
   $counts=@{}
   $types=New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
-  $reader=[Xml.XmlReader]::Create((New-Object IO.StringReader($text)),$settings)
+  $reader=[Xml.XmlReader]::Create(([IO.StringReader]::new($text)),$settings)
   $elements=0
   try {
     while($reader.Read()){
@@ -168,7 +168,7 @@ try{
       }catch {Record-Failure 'AssociationList' $_.Exception}
     }
     $r.Coverage.ListsTruncated=($lists.Count -gt $MaxLists)
-    $r.Coverage.Workflow2010=$(if($r.Coverage.ListsTruncated){'PARTIAL_LIMIT'}else{'OK'})
+    $r.Coverage.Workflow2010=$(if($r.Coverage.ListsTruncated){'PARTIAL_LIMIT'}elseif(@($errors|Where-Object {$_.Section -eq 'AssociationList'}).Count -gt 0){'PARTIAL_ERRORS'}else{'OK'})
   }catch{Record-Failure 'Associations2010' $_.Exception;$r.Coverage.Workflow2010='FAILED'}
   $r.Associations2010=@($assoc.ToArray())
 
@@ -280,7 +280,7 @@ try{
       }catch{Record-Failure 'Definition2013' $_.Exception}
     }
     $r.Definitions2013=@($defs.ToArray())
-    $r.Coverage.Workflow2013=$(if($r.Coverage.Definitions2013Truncated){'PARTIAL_LIMIT'}else{'OK'})
+    $r.Coverage.Workflow2013=$(if($r.Coverage.Definitions2013Truncated){'PARTIAL_LIMIT'}elseif(@($errors|Where-Object {$_.Section -eq 'Definition2013'}).Count -gt 0){'PARTIAL_ERRORS'}else{'OK'})
   }catch{
     Record-Failure 'Workflow2013' $_.Exception
     $r.Coverage.Workflow2013='FAILED'
