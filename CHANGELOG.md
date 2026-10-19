@@ -1,5 +1,15 @@
 # Historia wersji
 
+## v2.5 — 2026-10-19
+
+- Oddzielna wersja on-prem do zbierania definicji SharePoint workflow 2010 (SPWorkflowAssociation, XOML) i 2013 (CSOM/XAML).
+- Parse-only XML z zakazem DTD i zdalnych bytów; limity rozmiarów i liczby skanowanych obiektów.
+- Raport HTML z aktywnymi powiązaniami, klasami operacji i heurystycznymi rodzinami strukturalnie podobnych procesów.
+- Jeden pseudonimizowany MD bez nazw i ścieżek z prywatnej farmy; jawnie niezidentyfikowane mapowania i braki kolektora.
+- Testy syntetyczne i GitHub Actions (PowerShell 5.1).
+
+
+
 ## v2.4.2 — 2026-10-15
 
 - Niezależny generator raportu HTML z istniejącego audytu v2.4.1 (bez ponownego skanowania).
