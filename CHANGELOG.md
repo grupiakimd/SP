@@ -1,5 +1,14 @@
 # Historia wersji
 
+## v2.5.2 — 2026-10-19
+
+- Poprawiono wyjątek `PropertyNotFoundException: Kind` w generatorze HTML — kolektor nie zapisywał tej właściwości.
+- Fallback typu profilu do `Extension` dla artefaktów 2010 i `DisplayName` dla definicji XAML 2013.
+- Brak wyników 2013 przy błędzie kolektora jest teraz oznaczany jako `NIEUSTALONE`, nie zero.
+- Zachowano osobne wydanie v2.5.2, UTF-8 BOM i test regresyjny z fikcyjnymi danymi odpowiadającymi strukturze kolektora.
+
+
+
 ## v2.5.1 — 2026-10-19
 
 - Osobny, kompletny folder wydania, bez nadpisywania v2.5.
