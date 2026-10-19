@@ -17,7 +17,8 @@ Zestaw narzędzi **PowerShell 5.1** do inwentaryzacji istniejącej farmy SharePo
 | **v2.4** | [`v2.4/`](v2.4/) | **Nowe.** Diagnostyka workflow 2010/2013, autostartu, alertów SMTP i Timer Jobs jednej listy. |
 | **v2.4.1** | [`v2.4.1/`](v2.4.1/) | **Nowe.** Diagnostyka jednej witryny bez ListTitle, workflow 2010 site/list i 2013 subskrypcje. |
 | **v2.4.2** | [`v2.4.2/`](v2.4.2/) | **Nowe.** Wizualny HTML z istniejącego raportu WorkflowSite_PRIVATE.json, bez ponownego skanowania. |
-| **v2.5** | [`v2.5/`](v2.5/) | **Aktualne: workflow migration.** Szczegółowa inwentaryzacja definicji XOML/XAML, potencjalne rodziny i raport HTML/MD. |
+| **v2.5** | [`v2.5/`](v2.5/) | Wersja archiwalna — poprawny zbiór JSON, problem kodowania/parsowania generatora raportu w PS5.1. |
+| **v2.5.1** | [`v2.5.1/`](v2.5.1/) | **Zalecana dla workflow migration.** Osobne kompletne wydanie UTF-8 BOM, raport HTML/MD z istniejącego JSON bez ponownego skanowania. |
 
 ![Podgląd dashboardu v2](v2/docs/dashboard_preview.png)
 
@@ -114,6 +115,16 @@ Otwórz powstały `WorkflowSite_Dashboard.html` lokalnie w przeglądarce. HTML z
 Na istniejącym APP SharePoint 2019 uruchom **jeden** [Invoke-SPWorkflowMigrationAudit.ps1](v2.5/Invoke-SPWorkflowMigrationAudit.ps1). Wrapper wykona [inwentaryzację](v2.5/Collect-SPWorkflowDefinitions.ps1) i automatycznie zbuduje lokalny HTML oraz pseudonimizowany MD za pomocą [generatora](v2.5/New-SPWorkflowMigrationReport.ps1). Skrypt identyfikuje włączone powiązania, dostępne artefakty XOML i XAML oraz hipotezy rodzin powtarzalnych procesów. Nie uruchamia ani nie konwertuje workflow.
 
 Pełna [instrukcja v2.5](v2.5/README.md).
+
+## Poprawka v2.5.1 — raport z istniejącego skanu
+
+Błąd PowerShell w generatorze HTML/MD (linie tabel `|`) naprawiony w **[v2.5.1](v2.5.1/)**. **Nie trzeba ponawiać audytu**. Pobierz ZIP z repo i uruchom tylko:
+
+```powershell
+& "C:\temp\sprawdzenie\v251\New-SPWorkflowMigrationReport.ps1" -InputPath "C:\temp\sprawdzenie\v25\SP_Workflow_Migration"
+```
+
+Plik `WorkflowDefinitions_PRIVATE.json` pozostaje na serwerze; wynikami będą graficzny HTML i pseudonimizowany MD. [Instrukcja](v2.5.1/README.md).
 
 ## Bezpieczeństwo i ograniczenia
 
