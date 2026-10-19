@@ -16,6 +16,17 @@ Dotychczasowy audyt ustalił dla jednej witryny 754 powiązania workflow 2010, 7
 - SHA256 od policzonych tagów XML to **grupowanie heurystyczne**. Ten sam hash sygnatury nie oznacza identycznych warunków, akcji ani odbiorców.
 - Powiązania z konkretnymi plikami definicji są oznaczone jako NOT_RESOLVED, dopóki nie da się ich jednoznacznie potwierdzić. Nie przypisujemy według zbieżności nazw.
 
+## Najprościej: jeden skrypt i od razu HTML + MD
+
+Na serwerze APP SharePoint 2019, Windows PowerShell 5.1 x64, po pobraniu repo przez **Code → Download ZIP**, zachowaj wszystkie trzy skrypty w folderze v2.5:
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass -Force
+& 'C:\temp\SP-main\v2.5\Invoke-SPWorkflowMigrationAudit.ps1' -WebUrl 'https://ADRES_WITRYNY' -OutputRoot 'C:\SP_Workflow_Migration' -MaxLists 1500
+```
+
+Ten wrapper sam uruchomi kolektor oraz generator raportów. W katalogu przebiegu powstaną lokalne `WorkflowMigration_Dashboard.html` i `WorkflowMigration_SHAREABLE.md` bez ręcznego uruchamiania drugiego polecenia.
+
 ## Uruchomienie na obecnej farmie SharePoint 2019
 
 Na jednym serwerze APP, w Windows PowerShell 5.1 x64, z uprawnieniami SharePoint Shell Admin:
