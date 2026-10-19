@@ -32,3 +32,9 @@ SP2019_Audit_*.zip
 Thumbs.db
 .DS_Store
 .vscode/
+
+# SharePoint workflow migration outputs
+**/WorkflowDefinitions_PRIVATE.json
+**/WorkflowMigration_Dashboard.html
+**/WorkflowMigration_SHAREABLE.md
+**/WorkflowDefinitions_*/
