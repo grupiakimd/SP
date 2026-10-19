@@ -73,6 +73,7 @@ function Checked-Status($v){
 function AddHtml([string]$line){[void]$script:html.Add($line)}
 $md=New-Object 'System.Collections.Generic.List[string]'
 function AddMd([string]$line){[void]$script:md.Add($line)}
+# PowerShell 5.1: script file saved with UTF-8 BOM, keep markup/table strings quoted.
 AddMd ' # SharePoint 2019 do SE: analiza definicji workflow (pseudonimizowana)'
 AddMd ''
 AddMd '**Zakres:** jedna witryna SPWeb, bez podwitryn; pliki XOML i definicje XAML sa artefaktami technicznymi.'
