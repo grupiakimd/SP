@@ -120,7 +120,7 @@ AddMd '5. Nie zakladaj, ze identyczny hash zliczen tagow XML oznacza identyczne 
 AddMd ''
 AddMd 'Plik MD nie zawiera nazw kont, serwerow, witryn, plikow, adresow ani surowych bledow. Nadal wymaga przegladu przed udostepnieniem.'
 $mdFile=Join-Path $OutputDirectory 'WorkflowMigration_SHAREABLE.md'
-[IO.File]::WriteAllText($mdFile,($md -join [Environment]::NewLine),(New-Object Text.UTF8Encoding($true)))
+[IO.File]::WriteAllText($mdFile,($md -join [Environment]::NewLine),([Text.UTF8Encoding]::new($true)))
 
 $html=New-Object 'System.Collections.Generic.List[string]'
 AddHtml @'
@@ -224,7 +224,7 @@ AddHtml @'
 </script></main></body></html>
 '@
 $htmlFile=Join-Path $OutputDirectory 'WorkflowMigration_Dashboard.html'
-[IO.File]::WriteAllText($htmlFile,($html -join [Environment]::NewLine),(New-Object Text.UTF8Encoding($true)))
+[IO.File]::WriteAllText($htmlFile,($html -join [Environment]::NewLine),([Text.UTF8Encoding]::new($true)))
 Write-Host ('ADMIN HTML (PRIVATE): '+$htmlFile) -ForegroundColor Green
 Write-Host ('SHAREABLE MD (REVIEW): '+$mdFile) -ForegroundColor Green
 Write-Warning 'Pseudonimizacja != pelna anonimowosc. Nigdy nie publikuj PRIVATE JSON/HTML.'
