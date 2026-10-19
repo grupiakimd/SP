@@ -4,7 +4,8 @@ Set-StrictMode -Version 2
 $root=Split-Path -Parent $PSScriptRoot
 $paths=@(
     'v2.5\Collect-SPWorkflowDefinitions.ps1',
-    'v2.5\New-SPWorkflowMigrationReport.ps1'
+    'v2.5\New-SPWorkflowMigrationReport.ps1',
+    'v2.5\Invoke-SPWorkflowMigrationAudit.ps1'
 )
 foreach($p in $paths){
     $path=Join-Path $root $p
