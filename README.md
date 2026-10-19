@@ -18,7 +18,8 @@ Zestaw narzędzi **PowerShell 5.1** do inwentaryzacji istniejącej farmy SharePo
 | **v2.4.1** | [`v2.4.1/`](v2.4.1/) | **Nowe.** Diagnostyka jednej witryny bez ListTitle, workflow 2010 site/list i 2013 subskrypcje. |
 | **v2.4.2** | [`v2.4.2/`](v2.4.2/) | **Nowe.** Wizualny HTML z istniejącego raportu WorkflowSite_PRIVATE.json, bez ponownego skanowania. |
 | **v2.5** | [`v2.5/`](v2.5/) | Wersja archiwalna — poprawny zbiór JSON, problem kodowania/parsowania generatora raportu w PS5.1. |
-| **v2.5.1** | [`v2.5.1/`](v2.5.1/) | **Zalecana dla workflow migration.** Osobne kompletne wydanie UTF-8 BOM, raport HTML/MD z istniejącego JSON bez ponownego skanowania. |
+| **v2.5.1** | [`v2.5.1/`](v2.5.1/) | Archiwalna — poprawiono UTF-8 BOM, ale niezgodne pole `Kind` w raporcie HTML. |
+| **v2.5.2** | [`v2.5.2/`](v2.5.2/) | **Zalecana.** Naprawa `The property Kind cannot be found`, bez ponownego audytu, osobny folder. |
 
 ![Podgląd dashboardu v2](v2/docs/dashboard_preview.png)
 
@@ -125,6 +126,17 @@ Błąd PowerShell w generatorze HTML/MD (linie tabel `|`) naprawiony w **[v2.5.1
 ```
 
 Plik `WorkflowDefinitions_PRIVATE.json` pozostaje na serwerze; wynikami będą graficzny HTML i pseudonimizowany MD. [Instrukcja](v2.5.1/README.md).
+
+## Poprawka v2.5.2 — brak właściwości Kind
+
+Po pomyślnym zbieraniu danych v2.5 generator HTML może zgłaszać `The property 'Kind' cannot be found`.
+Pobierz folder [v2.5.2](v2.5.2/) i uruchom **tylko generator** na zachowanym `WorkflowDefinitions_PRIVATE.json`:
+
+```powershell
+& "C:\temp\sprawdzenie\v252\New-SPWorkflowMigrationReport.ps1" -InputPath "C:\temp\sprawdzenie\v25\SP_Workflow_Migration"
+```
+
+[Pełna instrukcja](v2.5.2/README.md). Nie trzeba ponawiać kolekcji.
 
 ## Bezpieczeństwo i ograniczenia
 
