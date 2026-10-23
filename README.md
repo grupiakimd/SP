@@ -20,10 +20,15 @@ Zestaw narzędzi **PowerShell 5.1** do inwentaryzacji istniejącej farmy SharePo
 | **v2.5** | [`v2.5/`](v2.5/) | Wersja archiwalna — poprawny zbiór JSON, problem kodowania/parsowania generatora raportu w PS5.1. |
 | **v2.5.1** | [`v2.5.1/`](v2.5.1/) | Archiwalna — poprawiono UTF-8 BOM, ale niezgodne pole `Kind` w raporcie HTML. |
 | **v2.5.2** | [`v2.5.2/`](v2.5.2/) | **Zalecana.** Naprawa `The property Kind cannot be found`, bez ponownego audytu, osobny folder. |
+| **v2.6** | [`v2.6/`](v2.6/) | **Pilotaż migracji jednej kolekcji do SE.** Bezpieczny audyt obecnej farmy SE, lokalny HTML/JSON i instrukcja przenoszenia testowej kopii bazy. |
 
 ![Podgląd dashboardu v2](v2/docs/dashboard_preview.png)
 
 Wersje pozostają **oddzielne i nie są nadpisywane**. **Używaj `v2.2` do pełnego skanu SharePoint, a `v2.3.1` do lokalnego SQL i scalania wyników**. Starsze wersje pozostają jako historia.
+
+## Pilotaż jednej kolekcji na testowym SharePoint SE — v2.6
+
+[Instrukcja pilotażu](v2.6/README.md) i [skrypt diagnostyczny](v2.6/Get-SPSEPilotReadiness.ps1) są dostępne do pobrania w jednym katalogu. Skrypt **nie modyfikuje farmy**: zbiera konfigurację SE i tworzy poufny lokalny HTML/JSON, które **nie powinny trafiać do repo**. Po zebraniu i weryfikacji danych przygotowuje się osobno backup/restore kopii bazy zawartości oraz kontrolowane `Test-SPContentDatabase` i `Mount-SPContentDatabase`.
 
 ## Szybki start — v2.2
 
