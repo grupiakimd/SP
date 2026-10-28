@@ -1,36 +1,42 @@
-# SPSE Automation v0.3.3 — LOCAL ONLY
+# SPSE Automation v0.3.4 — LOCAL ONLY
 
-Instalator SharePoint Server Subscription Edition dla 4 serwerów Windows Server 2025:
-`SPSEAPP1`, `SPSEAPP2`, `SPSEWFE1`, `SPSEWFE2`. SQL: `SPSEDB` (TCP 1433).
+Automatyzacja instalacji SharePoint Server Subscription Edition na czterech serwerach Windows Server 2025:
+- `SPSEAPP1`, `SPSEAPP2` — Application with Search
+- `SPSEWFE1`, `SPSEWFE2` — Web Front End with Distributed Cache
+- istniejący SQL Server `SPSEDB:1433`
 
-**[Pobierz najnowszy ZIP v0.3.3](SPSE_Automation_v03_3_Local.zip)** · **[Kod źródłowy](spse-automation/)** · **[Pełna instrukcja](spse-automation/README.md)**
+**[Pobierz najnowszą paczkę v0.3.4 (ZIP)](SPSE_Automation_v03_4_Local.zip)** · **[Źródła PowerShell](spse-automation/)** · **[Pełna instrukcja](spse-automation/README.md)**
 
-## Co zmieniło się w v0.3.3?
+## Poprawka v0.3.4 (28 października 2026 r.)
 
-Audyt SPSEAPP1 potwierdził zainstalowanie wszystkich 30 wymaganych funkcji Windows i brak oczekującego restartu.
+Po podaniu lokalnego obrazu ISO etap `Prerequisites` w v0.3.3 zgłaszał błąd `The property 'Parent' cannot be found on this object`.
 
-Poprawiono krok `SqlAlias`: wcześniej próbował bezpośrednio tworzyć wpis w rejestrze i mógł wywołać błąd `PropertyNotFoundStrict`, gdy alias nie istniał. Teraz uruchamia **lokalnie 64-bitowy SQL Server Client Network Utility (`cliconfg.exe`)**. Operator sam tworzy alias przez GUI, a skrypt sprawdza wynik bez modyfikacji rejestru. W przypadku konfliktu z już istniejącym aliasem skrypt odmawia nadpisania.
+W `Common.ps1`, funkcja `Assert-SPSELocalPath`, poprawiono przechodzenie po ścieżce:
+- dla `FileInfo` pobierany jest nadrzędny katalog przez `Directory`;
+- dla `DirectoryInfo` pobierany jest `Parent`;
+- plik i wszystkie katalogi nadrzędne nadal są sprawdzane pod kątem reparse points (linków/junction);
+- pozostała walidacja tylko lokalnych dysków stałych oraz jawne potwierdzenie instalacji.
 
-Instrukcja w narzędziu: **Alias > Add > TCP/IP**, alias `SQL-SPSE`, serwer `SPSEDB`, port `1433`.
+To **poprawka walidacji ścieżek**, bez zmian w konfiguracji SQL, farmy, SharePoint oraz funkcji Windows. Archiwum i zgodność plików sprawdzono statycznie; działania Windows PowerShell na Windows Server 2025 wymagają lokalnego sprawdzenia.
 
-### Kolejny krok tylko na SPSEAPP1
+## Uruchomienie na SPSEAPP1
+
+Pobierz i rozpakuj nowe ZIP na lokalny dysk, a następnie w Windows PowerShell 5.1 x64:
 
 ```powershell
-# 1. Potwierdzenie 30/30 funkcji Windows:
-.\SPSEAPP1.ps1 -Step Audit
-# 2. Konfiguracja klienta SQL:
-.\SPSEAPP1.ps1 -Step SqlAlias
-# 3. Ponowny audyt lokalny:
-.\SPSEAPP1.ps1 -Step Audit
+cd C:\temp\spse-automation
+.\SPSEAPP1.ps1 -Step Prerequisites
 ```
 
-Nie uruchamiaj jeszcze `CreateFarm`, `JoinFarm` ani pozostałych instalacji bez weryfikacji.
+Wprowadź pełną ścieżkę do angielskiego ISO SharePoint SE (np. `C:\install\SE\OfficeServer.iso`). Poczekaj na wynik walidacji; instalator ruszy dopiero po ręcznym wpisaniu `PREREQ SPSEAPP1`. Po jego zakończeniu prześlij wynik przed przejściem dalej.
+
+**Nie uruchamiaj `CreateFarm` ani `JoinFarm`.**
 
 ## Bezpieczeństwo
 
-- Tylko wykonanie lokalne, jeden serwer naraz, sprawdzenie nazwy hosta.
-- Brak PowerShell Remoting, zdalnej dystrybucji instalatorów, automatycznych restartów i CI.
-- Nie przechowuj w publicznym repozytorium kluczy licencyjnych, haseł ani wyników audytów infrastruktury.
-- Wersja nie jest przetestowana na docelowym Windows Server 2025 poza zgłoszonym działającym etapem `Audit` v0.3.2; nowe `SqlAlias` wymaga lokalnej weryfikacji.
+- Instalacja lokalna, jedna maszyna naraz; blokada nazwy docelowej VM.
+- Bez PowerShell Remoting, centralnego kopiowania, automatycznych restartów i CI.
+- Nie publikujemy kluczy produktów, haseł, obrazów ISO ani raportów z infrastruktury.
+- Zdalne modyfikacje baz możliwe dopiero w ręcznie zatwierdzonych etapach tworzenia/dołączania farmy.
 
-SHA256 ZIP: `7f4db99f78c0aceffea2d202ee85b26e498a82770cd08cc58e18d903792f3ff6`.
+SHA256 archiwum: `11634cfdf8106a2839c4dc19332ccdfd050b4904fed2288235e32c65157069c6`

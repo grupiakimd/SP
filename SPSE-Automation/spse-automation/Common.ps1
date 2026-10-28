@@ -61,7 +61,13 @@ function Assert-SPSELocalPath {
         if ($part.Attributes -band [IO.FileAttributes]::ReparsePoint) {
             throw "Link/reparse point jest niedozwolony w sciezce: $($part.FullName)"
         }
-        $part = $part.Parent
+        if ($part -is [System.IO.FileInfo]) {
+            # FileInfo has Directory, not Parent (StrictMode-compatible).
+            $part = $part.Directory
+        } else {
+            # DirectoryInfo has Parent; this also checks all ancestor folders.
+            $part = $part.Parent
+        }
     }
     if ($Extension -and [IO.Path]::GetExtension($item.FullName) -ine $Extension) {
         throw "Oczekiwany plik $Extension dla: $Label"

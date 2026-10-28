@@ -1,4 +1,4 @@
-﻿# SPSE Automation v0.3.3 LOCAL-ONLY. Brak PowerShell Remoting i operacji na innych VM.
+﻿# SPSE Automation v0.3.4 LOCAL-ONLY. Brak PowerShell Remoting i operacji na innych VM.
 param(
     [Parameter(Mandatory)][ValidateSet('SPSEAPP1','SPSEAPP2','SPSEWFE1','SPSEWFE2')][string]$ExpectedHost,
     [ValidateSet('Audit','WindowsFeatures','SqlAlias','Prerequisites','InstallCore','InstallPolishLP','InstallCU','CreateFarm','JoinFarm','AuditFarm')]
@@ -16,7 +16,7 @@ $reports=Join-Path $PSScriptRoot 'reports'
 # Folder raportu tworzymy dopiero po walidacji hosta.
 New-Item -ItemType Directory -Path $reports -Force | Out-Null
 $server=$env:COMPUTERNAME
-Write-Host "SPSE v0.3.3 / LOCAL ONLY | $server | $Step | $role" -ForegroundColor Cyan
+Write-Host "SPSE v0.3.4 / LOCAL ONLY | $server | $Step | $role" -ForegroundColor Cyan
 
 function Get-AuditInfo {
     $os=Get-CimInstance Win32_OperatingSystem

@@ -1,4 +1,4 @@
-﻿# SharePoint Server SE — automatyzacja lokalna v0.3.3 (SAFE LOCAL)
+﻿# SharePoint Server SE — automatyzacja lokalna v0.3.4 (SAFE LOCAL)
 
 **Model bezpieczeństwa:** Zrezygnowano CAŁKOWICIE z zarządzania zdalnego. ZIP nie zawiera skryptów Remote*, Distribute*, `Invoke-Command` ani transferu plików do innych maszyn. Każdą czynność operator uruchamia osobno na konsoli danej VM. Nie uruchamiaj skryptów v0.2 na środowisku produkcyjnym.
 
@@ -113,3 +113,11 @@ Przykład uruchomienia `Prerequisites`:
 ## Aktualizacja v0.3.3 — lokalna konfiguracja aliasu SQL
 
 Etap `SqlAlias` otwiera **64-bitowe `cliconfg.exe`** po oddzielnym potwierdzeniu; nie zmienia bezposrednio rejestru. W oknie narzedzia wybierz zakladke **Alias > Add**, protokol **TCP/IP**, alias `SQL-SPSE`, serwer `SPSEDB`, port `1433`. Zatwierdz i zamknij okno. Skrypt sprawdzi wynik w lokalnym rejestrze, nie laczy sie z SQL i nie zapisuje danych na serwerze bazy. W razie istniejacego aliasu wskazujacego gdzie indziej skrypt bezpiecznie przerwie. Przed utworzeniem farmy wykonaj oddzielny test polaczenia z SQL.
+
+## Poprawka v0.3.4 — walidacja lokalnych plikow ISO
+
+- Usunieto wyjatek StrictMode `The property 'Parent' cannot be found on this object` w `Assert-SPSELocalPath`.
+- Plik `.iso`/`.exe` (`FileInfo`) jest sprawdzany razem z katalogiem nadrzednym (`Directory`), a kazdy katalog wyzej przez `Parent`.
+- Zachowano odmowe sciezek sieciowych, linkow/junction i potwierdzenia przed instalacja.
+- Nie zmieniono komend instalacyjnych, SQL, farmy ani funkcji Windows.
+- Zmiana sprawdzona statycznie; uruchomienie na docelowym Windows Server 2025 nadal wymaga lokalnej kontroli.
