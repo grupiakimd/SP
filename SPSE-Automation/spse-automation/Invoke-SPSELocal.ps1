@@ -1,4 +1,4 @@
-﻿# SPSE Automation v0.3.2 LOCAL-ONLY. Brak PowerShell Remoting i operacji na innych VM.
+﻿# SPSE Automation v0.3.3 LOCAL-ONLY. Brak PowerShell Remoting i operacji na innych VM.
 param(
     [Parameter(Mandatory)][ValidateSet('SPSEAPP1','SPSEAPP2','SPSEWFE1','SPSEWFE2')][string]$ExpectedHost,
     [ValidateSet('Audit','WindowsFeatures','SqlAlias','Prerequisites','InstallCore','InstallPolishLP','InstallCU','CreateFarm','JoinFarm','AuditFarm')]
@@ -16,7 +16,7 @@ $reports=Join-Path $PSScriptRoot 'reports'
 # Folder raportu tworzymy dopiero po walidacji hosta.
 New-Item -ItemType Directory -Path $reports -Force | Out-Null
 $server=$env:COMPUTERNAME
-Write-Host "SPSE v0.3.2 / LOCAL ONLY | $server | $Step | $role" -ForegroundColor Cyan
+Write-Host "SPSE v0.3.3 / LOCAL ONLY | $server | $Step | $role" -ForegroundColor Cyan
 
 function Get-AuditInfo {
     $os=Get-CimInstance Win32_OperatingSystem
@@ -33,9 +33,7 @@ function Get-AuditInfo {
     }
     $release=0
     try { $release=[int](Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full' -Name Release -ErrorAction Stop).Release } catch {}
-    $aliasKey='HKLM:\SOFTWARE\Microsoft\MSSQLServer\Client\ConnectTo'
-    $aliasValue=''
-    try { $aliasValue=[string](Get-ItemProperty -Path $aliasKey -Name $c.SqlAlias -ErrorAction Stop).($c.SqlAlias) } catch {}
+    $aliasValue=Get-SPSESqlAliasValue -Config $c
     $build=''
     if (Get-SharePointPresent) {
         $path=Join-Path ${env:CommonProgramFiles} 'microsoft shared\Web Server Extensions\16\ISAPI\Microsoft.SharePoint.dll'
@@ -140,8 +138,22 @@ switch ($Step) {
  }
  'SqlAlias' {
     Assert-LocalReady
-    Confirm-LocalAction -Phrase "ALIAS $server" -Description "Doda lokalny alias $($c.SqlAlias) -> $($c.SqlTarget):$($c.SqlPort)."
-    Set-SPSESqlAlias -Config $c | Out-Host
+    $expectedAliasValue="DBMSSOCN,$($c.SqlTarget),$([int]$c.SqlPort)"
+    $existingAliasValue=Get-SPSESqlAliasValue -Config $c
+    if ($existingAliasValue -eq $expectedAliasValue) {
+        Write-Host "Alias $($c.SqlAlias) juz jest poprawnie skonfigurowany: $existingAliasValue" -ForegroundColor Green
+        break
+    }
+    if (-not [string]::IsNullOrWhiteSpace($existingAliasValue)) {
+        throw "Alias $($c.SqlAlias) juz istnieje, ale ma inna konfiguracje: $existingAliasValue. Sprawdz recznie; skrypt nie nadpisuje."
+    }
+    Confirm-LocalAction -Phrase "ALIAS $server" -Description "Uruchomi lokalny 64-bitowy kreator aliasu SQL (cliconfg.exe). Nie zapisze nic samodzielnie."
+    $clientTool=Join-Path $env:WINDIR 'System32\cliconfg.exe'
+    Test-FilePresent -Path $clientTool -Label 'SQL Server Client Network Utility'
+    Write-Host "W narzedziu Alias > Add skonfiguruj: alias=$($c.SqlAlias), TCP/IP, serwer=$($c.SqlTarget), port=$($c.SqlPort)." -ForegroundColor Yellow
+    Start-Process -FilePath $clientTool -Wait
+    Assert-LocalSqlAlias -Config $c
+    Write-Host "Alias $($c.SqlAlias) poprawnie zapisany i zweryfikowany lokalnie." -ForegroundColor Green
     break
  }
  'Prerequisites' {

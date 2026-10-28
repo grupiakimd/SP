@@ -1,4 +1,4 @@
-﻿# SharePoint Server SE — automatyzacja lokalna v0.3.2 (SAFE LOCAL)
+﻿# SharePoint Server SE — automatyzacja lokalna v0.3.3 (SAFE LOCAL)
 
 **Model bezpieczeństwa:** Zrezygnowano CAŁKOWICIE z zarządzania zdalnego. ZIP nie zawiera skryptów Remote*, Distribute*, `Invoke-Command` ani transferu plików do innych maszyn. Każdą czynność operator uruchamia osobno na konsoli danej VM. Nie uruchamiaj skryptów v0.2 na środowisku produkcyjnym.
 
@@ -29,7 +29,7 @@ cd C:\temp\spse-automation
 .\SPSEAPP1.ps1 -Step Audit                 # tylko lokalny odczyt + zapis HTML/JSON
 .\SPSEAPP1.ps1 -Step WindowsFeatures       # instaluje tylko lokalne funkcje po potwierdzeniu
 # gdy jest wymagany restart, uruchamiasz ponownie serwer SAMODZIELNIE
-.\SPSEAPP1.ps1 -Step SqlAlias              # tylko lokalny wpis HKLM; nie modyfikuje SQL
+.\SPSEAPP1.ps1 -Step SqlAlias              # lokalny kreator cliconfg.exe (64-bit), reczna konfiguracja aliasu
 .\SPSEAPP1.ps1 -Step Prerequisites         # interaktywny installer Microsoft
 # ręczny restart + Audit
 .\SPSEAPP1.ps1 -Step InstallCore -AcceptLicenseTerms
@@ -109,3 +109,7 @@ Przykład uruchomienia `Prerequisites`:
 # W odpowiedzi na pytanie wpisz: E:\install\obraz_sharepoint.iso
 # Potwierdzenie instalacji jest nadal oddzielnym krokiem.
 ```
+
+## Aktualizacja v0.3.3 — lokalna konfiguracja aliasu SQL
+
+Etap `SqlAlias` otwiera **64-bitowe `cliconfg.exe`** po oddzielnym potwierdzeniu; nie zmienia bezposrednio rejestru. W oknie narzedzia wybierz zakladke **Alias > Add**, protokol **TCP/IP**, alias `SQL-SPSE`, serwer `SPSEDB`, port `1433`. Zatwierdz i zamknij okno. Skrypt sprawdzi wynik w lokalnym rejestrze, nie laczy sie z SQL i nie zapisuje danych na serwerze bazy. W razie istniejacego aliasu wskazujacego gdzie indziej skrypt bezpiecznie przerwie. Przed utworzeniem farmy wykonaj oddzielny test polaczenia z SQL.

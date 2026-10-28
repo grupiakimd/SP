@@ -168,18 +168,17 @@ function Invoke-FromIso {
         if ($ownedMount) { Dismount-DiskImage -ImagePath $IsoPath -ErrorAction SilentlyContinue | Out-Null }
     }
 }
-function Set-SPSESqlAlias {
+# Odczyt istniejącego 64-bitowego aliasu bez modyfikacji rejestru.
+# Microsoft zaleca konfigurowanie aliasu narzędziem SQL Server Client Network Utility (cliconfg.exe).
+function Get-SPSESqlAliasValue {
     param($Config)
-    # Windows x64 alias. Ustawianie 32-bit aliasu nie jest potrzebne dla SPSE.
     $key = 'HKLM:\SOFTWARE\Microsoft\MSSQLServer\Client\ConnectTo'
-    if (-not (Test-Path $key)) { New-Item -Path $key -Force | Out-Null }
-    $value = "DBMSSOCN,$($Config.SqlTarget),$([int]$Config.SqlPort)"
-    $current = (Get-ItemProperty -Path $key -Name $Config.SqlAlias -ErrorAction SilentlyContinue).($Config.SqlAlias)
-    if ($current -and $current -ne $value) {
-        throw "Alias $($Config.SqlAlias) juz istnieje z innym celem ($current). Nie nadpisuje bez analizy."
-    }
-    if (-not $current) { New-ItemProperty -Path $key -Name $Config.SqlAlias -Value $value -PropertyType String -Force | Out-Null }
-    return $value
+    if (-not (Test-Path -LiteralPath $key)) { return '' }
+    $entry = Get-ItemProperty -LiteralPath $key -ErrorAction SilentlyContinue
+    if ($null -eq $entry) { return '' }
+    $property = $entry.PSObject.Properties[[string]$Config.SqlAlias]
+    if ($null -eq $property) { return '' }
+    return [string]$property.Value
 }
 
 # Dokladna lista z Microsoft Learn: wymagane Windows Server roles/features dla SPSE.
@@ -247,9 +246,7 @@ function Assert-CoreInstalled {
 
 function Assert-LocalSqlAlias {
     param($Config)
-    $key='HKLM:\SOFTWARE\Microsoft\MSSQLServer\Client\ConnectTo'
     $expected="DBMSSOCN,$($Config.SqlTarget),$([int]$Config.SqlPort)"
-    $current=$null
-    try { $current=(Get-ItemProperty -Path $key -Name $Config.SqlAlias -ErrorAction Stop).($Config.SqlAlias) } catch {}
+    $current=Get-SPSESqlAliasValue -Config $Config
     if ($current -ne $expected) { throw "Lokalny alias $($Config.SqlAlias) powinien miec $expected, ma: $current. Uruchom osobny etap SqlAlias." }
 }
