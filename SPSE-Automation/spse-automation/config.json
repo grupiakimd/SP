@@ -1,8 +1,4 @@
 {
-  "InstallRoot": "E:\\install",
-  "SharePointIso": "SPSE_EN.iso",
-  "LanguagePackIso": "ServerLanguagePack.iso",
-  "PatchExe": "uber-subscription-kb5002927-fullfile-x64-glb.exe",
   "PatchSha256": "74860C53DAD8D985DC52844344CC5A82CFD04437A3B30C9C45CC6974222073C6",
   "SqlAlias": "SQL-SPSE",
   "SqlTarget": "SPSEDB",

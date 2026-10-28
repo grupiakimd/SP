@@ -1,4 +1,4 @@
-﻿# SPSE Automation v0.3.1 LOCAL-ONLY. Brak PowerShell Remoting i operacji na innych VM.
+﻿# SPSE Automation v0.3.2 LOCAL-ONLY. Brak PowerShell Remoting i operacji na innych VM.
 param(
     [Parameter(Mandatory)][ValidateSet('SPSEAPP1','SPSEAPP2','SPSEWFE1','SPSEWFE2')][string]$ExpectedHost,
     [ValidateSet('Audit','WindowsFeatures','SqlAlias','Prerequisites','InstallCore','InstallPolishLP','InstallCU','CreateFarm','JoinFarm','AuditFarm')]
@@ -16,18 +16,14 @@ $reports=Join-Path $PSScriptRoot 'reports'
 # Folder raportu tworzymy dopiero po walidacji hosta.
 New-Item -ItemType Directory -Path $reports -Force | Out-Null
 $server=$env:COMPUTERNAME
-Write-Host "SPSE v0.3.1 / LOCAL ONLY | $server | $Step | $role" -ForegroundColor Cyan
+Write-Host "SPSE v0.3.2 / LOCAL ONLY | $server | $Step | $role" -ForegroundColor Cyan
 
 function Get-AuditInfo {
     $os=Get-CimInstance Win32_OperatingSystem
     $computer=Get-CimInstance Win32_ComputerSystem
     $features=@(Get-SPSEFeatureStatus)
     $missing=@($features | Where-Object InstallState -ne 'Installed' | ForEach-Object Name)
-    $disk=Get-PSDrive -Name E -ErrorAction SilentlyContinue
-    $media=@(@($c.SharePointIso,$c.LanguagePackIso,$c.PatchExe) | ForEach-Object {
-        $p=Join-Path $c.InstallRoot $_
-        [pscustomobject]@{Name=$_;Present=(Test-Path -LiteralPath $p -PathType Leaf)}
-    })
+    # Media are selected interactively only in the relevant installation step.
     $vc=$null
     try { $vc=Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64' -ErrorAction Stop } catch {}
     $vcInstalled=$false
@@ -51,9 +47,9 @@ function Get-AuditInfo {
         InstalledWindowsFeatures=$features.Count-$missing.Count; RequiredWindowsFeatures=$features.Count
         MissingFeatures=($missing -join ', '); DotNetRelease=$release; VCRedist=$vcInstalled
         SharePointPresent=(Get-SharePointPresent); SharePointFileVersion=$build
-        PendingReboot=(Test-RebootPending); LocalDiskE=([bool]$disk)
+        PendingReboot=(Test-RebootPending); ReportsDirectory=$reports
         SqlTarget=$c.SqlTarget; SqlPort=$c.SqlPort; SqlAlias=$c.SqlAlias; SqlAliasRegistry=$aliasValue
-        Media=($media | ForEach-Object { "$($_.Name):$($_.Present)" }) -join '; '
+        Media='Sciezki wskazywane osobno podczas etapow instalacyjnych'
         State=((Get-State) | ConvertTo-Json -Compress)
     }
 }
@@ -78,9 +74,8 @@ function Require-InstalledFeatures {
     if ($missing.Count) { throw "Brakuje funkcji Windows: $($missing -join ', '); wykonaj WindowsFeatures." }
 }
 function Run-IsoCommand {
-    param([string]$IsoName,[string]$ExeRelative,[string]$Arguments='')
-    $iso=Join-Path $c.InstallRoot $IsoName
-    Test-FilePresent -Path $iso -Label 'ISO'
+    param([string]$IsoPath,[string]$ExeRelative,[string]$Arguments='')
+    $iso=Assert-SPSELocalPath -Path $IsoPath -PathType Leaf -Label 'ISO' -Extension '.iso'
     $disk=Get-DiskImage -ImagePath $iso -ErrorAction SilentlyContinue
     $ownedMount=(-not ($disk -and $disk.Attached))
     try {
@@ -110,11 +105,11 @@ function Assert-InstalledStage {
     }
 }
 function Check-PatchSignature {
-    $path=Join-Path $c.InstallRoot $c.PatchExe
-    Test-FilePresent -Path $path -Label 'CU'
+    param([Parameter(Mandatory)][string]$PatchPath)
+    $path=Assert-SPSELocalPath -Path $PatchPath -PathType Leaf -Label 'CU' -Extension '.exe'
     $hash=(Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash
     if ($hash -ne $c.PatchSha256.ToUpperInvariant()) { throw "NIEPRAWIDLOWY SHA256 dla CU: $hash" }
-    if ($c.PatchExe -notmatch '(?i)kb5002927') { throw 'Oczekiwany KB5002927. Wymagana rewizja wersji i SHA.' }
+    # Filename can vary. The pinned SHA256 + valid digital signature determine the accepted CU.
     $sig=Get-AuthenticodeSignature -FilePath $path
     if ($sig.Status -ne 'Valid') { throw "Podpis CU nieprawidlowy: $($sig.Status)" }
     return $path
@@ -129,13 +124,16 @@ switch ($Step) {
     $missing=@(Get-SPSEFeatureStatus | Where-Object InstallState -ne 'Installed' | ForEach-Object Name)
     if (-not $missing.Count) { Write-Host 'Funkcje Windows juz zainstalowane.' -ForegroundColor Green; break }
     Write-Host "Brakujace funkcje: $($missing -join ', ')"
+    if (-not $WindowsSource) {
+        $WindowsSource=Read-Host 'Opcjonalna lokalna sciezka do zrodla funkcji Windows (np. D:\sources\sxs; ENTER = bez wskazywania)'
+    }
+    if ($WindowsSource) {
+        $WindowsSource=Assert-SPSELocalPath -Path $WindowsSource -PathType Container -Label 'WindowsSource'
+    }
     Confirm-LocalAction -Phrase "INSTALUJ $server" -Description 'Doinstaluje brakujace lokalne funkcje Windows, bez automatycznego restartu.'
     $args=@{Name=$missing;ErrorAction='Stop'}
-    if ($WindowsSource) {
-        if (-not (Test-Path -LiteralPath $WindowsSource)) { throw "Brak lokalnego WindowsSource: $WindowsSource" }
-        $args['Source']=$WindowsSource
-    }
-    $r=Install-WindowsFeature @args  # BRAK -ComputerName, BRAK -Restart
+    if ($WindowsSource) { $args['Source']=$WindowsSource }
+    $r=Install-WindowsFeature @args  # Tylko lokalna instalacja; bez automatycznego restartu
     if (-not $r.Success) { throw 'Instalacja funkcji Windows: Success=False.' }
     Write-Host "Funkcje Windows: Success=$($r.Success), RestartNeeded=$($r.RestartNeeded)" -ForegroundColor Yellow
     Publish-LocalAudit; break
@@ -148,9 +146,10 @@ switch ($Step) {
  }
  'Prerequisites' {
     Assert-LocalReady; Require-InstalledFeatures
+    $iso=Read-SPSELocalFilePath -Label 'angielskiego ISO SharePoint SE' -Extension '.iso'
     Confirm-LocalAction -Phrase "PREREQ $server" -Description 'Uruchomi lokalny, INTERAKTYWNY prerequisiteinstaller.exe firmy Microsoft. Moze wymagac restartu i pobran z Microsoft.'
     # GUI/interactive instead of /unattended; operator controls Microsoft installer and restarts.
-    $code=Run-IsoCommand -IsoName $c.SharePointIso -ExeRelative 'prerequisiteinstaller.exe'
+    $code=Run-IsoCommand -IsoPath $iso -ExeRelative 'prerequisiteinstaller.exe'
     if ($code -ne 0) { throw 'Microsoft Prerequisite Installer zglosil restart. Wykonaj recznie restart i wznow etap.' }
     if (Test-RebootPending) { throw 'Restart wymagany po prerequisiteinstaller.exe; wykonaj go recznie i powtorz AUDIT.' }
     Save-LocalStep -Name 'Prerequisites'
@@ -160,9 +159,10 @@ switch ($Step) {
     Assert-LocalReady; Require-InstalledFeatures; Assert-InstalledStage -StageName 'Prerequisites'
     if (Get-SharePointPresent) { throw 'SharePoint juz jest na dysku; nie wykonuje ponownej instalacji. Zweryfikuj recznie.' }
     if (-not $AcceptLicenseTerms) { throw 'Po zapoznaniu sie z licencja uruchom z -AcceptLicenseTerms.' }
+    $iso=Read-SPSELocalFilePath -Label 'angielskiego ISO SharePoint SE' -Extension '.iso'
     Confirm-LocalAction -Phrase "SHAREPOINT $server" -Description 'Uruchomi LOKALNY setup.exe SharePoint SE. Klucz licencji podajesz w oknie Microsoft Setup.'
     # Interaktywne Setup: nie zapisujemy klucza produktu do plikow tymczasowych.
-    Run-IsoCommand -IsoName $c.SharePointIso -ExeRelative 'setup.exe'
+    Run-IsoCommand -IsoPath $iso -ExeRelative 'setup.exe'
     if (-not (Get-SharePointPresent)) { throw 'Nie wykryto binariow po instalacji. Zweryfikuj komunikaty Setup.' }
     Save-LocalStep -Name 'Core'
     Write-Warning 'Przed PL wykonaj reczny restart systemu nawet jesli Windows go nie wymaga.'
@@ -171,8 +171,9 @@ switch ($Step) {
  'InstallPolishLP' {
     Assert-LocalReady; Assert-CoreInstalled; Assert-InstalledStage -StageName 'Core'
     if (-not $AcceptLicenseTerms) { throw 'Po zapoznaniu sie z licencja uzyj -AcceptLicenseTerms.' }
+    $iso=Read-SPSELocalFilePath -Label 'polskiego Language Pack ISO SharePoint SE' -Extension '.iso'
     Confirm-LocalAction -Phrase "POLSKI $server" -Description 'Uruchomi interaktywnie instalator polskiego Language Pack z lokalnego ISO.'
-    Run-IsoCommand -IsoName $c.LanguagePackIso -ExeRelative 'setup.exe'
+    Run-IsoCommand -IsoPath $iso -ExeRelative 'setup.exe'
     Save-LocalStep -Name 'LanguagePack'
     Write-Warning 'Wykonaj reczny restart przed CU.'
     break
@@ -180,7 +181,8 @@ switch ($Step) {
  'InstallCU' {
     Assert-LocalReady; Assert-CoreInstalled; Assert-InstalledStage -StageName 'Core'; Assert-InstalledStage -StageName 'LanguagePack'
     if (-not $AcceptLicenseTerms) { throw 'Po zapoznaniu sie z warunkami uzyj -AcceptLicenseTerms.' }
-    $patchPath=Check-PatchSignature
+    $selectedPatch=Read-SPSELocalFilePath -Label 'aktualizacji SharePoint CU (KB5002927)' -Extension '.exe'
+    $patchPath=Check-PatchSignature -PatchPath $selectedPatch
     Confirm-LocalAction -Phrase "CU $server" -Description 'Zainstaluje zweryfikowana CU lokalnie przez /quiet /norestart. Nie uruchamia PSConfig.'
     $restartCU=Invoke-SPSEInstaller -File $patchPath -Arguments '/quiet /norestart'
     Save-LocalStep -Name 'Patch'

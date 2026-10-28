@@ -9,8 +9,8 @@ function Read-SPSEConfig {
         $ConfigJson = Get-Content -LiteralPath $p -Raw
     }
     $c = $ConfigJson | ConvertFrom-Json
-    $expected = @('InstallRoot','SharePointIso','LanguagePackIso','PatchExe','PatchSha256',
-                  'SqlAlias','SqlTarget','SqlPort','FarmConfigDb','FarmAdminContentDb',
+    # Paths to installation files are NEVER stored in config.json. Prompt per step.
+    $expected = @('PatchSha256','SqlAlias','SqlTarget','SqlPort','FarmConfigDb','FarmAdminContentDb',
                   'CentralAdminPort','CentralAdminAuth','PrimaryServer','Servers')
     foreach ($key in $expected) {
         if (-not $c.PSObject.Properties[$key] -or [string]::IsNullOrWhiteSpace([string]$c.$key)) {
@@ -32,6 +32,52 @@ function Read-SPSEConfig {
     }
     if (-not $c.Servers.PSObject.Properties[$c.PrimaryServer]) { throw 'PrimaryServer musi wystepowac w Servers.' }
     return $c
+}
+
+# Only explicitly selected fixed local disks are accepted as installation sources.
+# No UNC, no mapped network drives, no relative paths and no remote management.
+function Assert-SPSELocalPath {
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][ValidateSet('Leaf','Container')][string]$PathType,
+        [Parameter(Mandatory)][string]$Label,
+        [string]$Extension = ''
+    )
+    $p = $Path.Trim().Trim('"').Trim("'")
+    if ($p -notmatch '^[A-Za-z]:\\' -or $p -match '^[A-Za-z]:\\\\') {
+        throw "Wymagana pelna sciezka na lokalnym dysku, bez UNC: $Label"
+    }
+    $drive = $p.Substring(0,1).ToUpperInvariant()
+    $disk = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='$($drive):'" -ErrorAction Stop
+    if ($null -eq $disk -or [int]$disk.DriveType -ne 3) {
+        throw "Sciezka $Label musi lezec na lokalnym dysku stalym (nie SMB/mapped/removable)."
+    }
+    $item = Get-Item -LiteralPath $p -ErrorAction Stop
+    if ($PathType -eq 'Leaf' -and $item.PSIsContainer) { throw "$Label musi wskazywac plik: $p" }
+    if ($PathType -eq 'Container' -and -not $item.PSIsContainer) { throw "$Label musi wskazywac katalog: $p" }
+    # Reject symlinks/junctions anywhere along the path, including a local junction to a share.
+    $part = $item
+    while ($null -ne $part) {
+        if ($part.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+            throw "Link/reparse point jest niedozwolony w sciezce: $($part.FullName)"
+        }
+        $part = $part.Parent
+    }
+    if ($Extension -and [IO.Path]::GetExtension($item.FullName) -ine $Extension) {
+        throw "Oczekiwany plik $Extension dla: $Label"
+    }
+    return $item.FullName
+}
+
+function Read-SPSELocalFilePath {
+    param([Parameter(Mandatory)][string]$Label,[Parameter(Mandatory)][string]$Extension)
+    for ($attempt=1; $attempt -le 3; $attempt++) {
+        $answer=Read-Host "Podaj pelna lokalna sciezke do $Label ($Extension; ENTER = anuluj)"
+        if ([string]::IsNullOrWhiteSpace($answer)) { throw 'Anulowano wybor pliku. Nie dokonano instalacji.' }
+        try { return Assert-SPSELocalPath -Path $answer -PathType Leaf -Label $Label -Extension $Extension }
+        catch { Write-Warning $_.Exception.Message }
+    }
+    throw "Niepoprawna sciezka $Label po trzech probach. Przerwano."
 }
 
 function Get-LocalRole {

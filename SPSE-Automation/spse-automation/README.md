@@ -1,4 +1,4 @@
-# SharePoint Server SE — automatyzacja lokalna v0.3.1 (SAFE LOCAL)
+﻿# SharePoint Server SE — automatyzacja lokalna v0.3.2 (SAFE LOCAL)
 
 **Model bezpieczeństwa:** Zrezygnowano CAŁKOWICIE z zarządzania zdalnego. ZIP nie zawiera skryptów Remote*, Distribute*, `Invoke-Command` ani transferu plików do innych maszyn. Każdą czynność operator uruchamia osobno na konsoli danej VM. Nie uruchamiaj skryptów v0.2 na środowisku produkcyjnym.
 
@@ -16,8 +16,8 @@ Alias `SQL-SPSE` zapisujemy wyłącznie lokalnie na 4 hostach, docelowo wskazuje
 
 ## Przygotowanie fizyczne na każdym serwerze
 
-1. Ręcznie kopiujesz folder ZIP (`spse-automation`) do `E:\install\spse-automation` **oraz osobno nośniki instalacyjne** do `E:\install`.
-2. Dopasuj nazwy trzech plików z `config.json` (sugerowane `SPSE_EN.iso`, `ServerLanguagePack.iso`, `uber-subscription-kb5002927-fullfile-x64-glb.exe`). Możesz odpowiednio zmienić nazwy swoich ISO. Nie podmieniaj wersji CU bez weryfikacji SHA256 i aktualizacji konfiguracji.
+1. Ręcznie kopiujesz skrypty na dysk lokalny docelowego serwera, np. `C:\temp\spse-automation`, a osobno obrazy ISO i CU **w dowolne lokalne lokalizacje** (np. `D:\ISO` lub `E:\instalki`).
+2. **Nie edytujesz ścieżek ani nazw plików w `config.json`.** Instalator pyta o pełne ścieżki do właściwego ISO / LP / CU dopiero przy etapie, który tego potrzebuje. `Audit`, `SqlAlias`, `CreateFarm` i `JoinFarm` nie pytają o nośniki. Aktualizacja CU musi nadal pasować do wymaganego SHA256 z konfiguracji.
 3. Uruchom **Windows PowerShell 5.1 x64** jako administrator na docelowym hostcie. Zalecane jest konto **dedykowane do instalacji**, będące lokalnym administratorem na tych czterech maszynach; konto Domain Admin nie jest domyślnie wymagane. Przy tworzeniu farmy niezbędne są oddzielnie właściwe uprawnienia do SQL i kont farmowych.
 4. Wykonaj ręcznie backup / snapshot VM oraz ustal okno serwisowe. Nie uruchamiaj jednocześnie instalacji na kilku hostach.
 5. Skrypt wymaga potwierdzenia tekstowego dla każdego kroku modyfikującego. Nie wywołuje `Restart-Computer`, `Invoke-Command`, `New-PSSession`, `Copy-Item` na inne VM ani nie używa `-ComputerName`.
@@ -25,7 +25,7 @@ Alias `SQL-SPSE` zapisujemy wyłącznie lokalnie na 4 hostach, docelowo wskazuje
 ## Przykład na SPSEAPP1
 
 ```powershell
-cd E:\install\spse-automation
+cd C:\temp\spse-automation
 .\SPSEAPP1.ps1 -Step Audit                 # tylko lokalny odczyt + zapis HTML/JSON
 .\SPSEAPP1.ps1 -Step WindowsFeatures       # instaluje tylko lokalne funkcje po potwierdzeniu
 # gdy jest wymagany restart, uruchamiasz ponownie serwer SAMODZIELNIE
@@ -65,7 +65,7 @@ Tworzenie farmy zakłada nowe DB `SPSE_Config` i `SPSE_AdminContent` na `SPSEDB`
 
 ## Raport lokalny
 
-`E:\install\spse-automation\reports\LocalAudit.html` to zbiorczy wynik tylko z bieżącego hosta: role/funkcje, OS, domena, nośniki, SharePoint, alias, lokalny stan instalacji. Nie agreguje danych z innych serwerów. Część `state.json` w `%ProgramData%\SPSE-Automation` to znaczniki procesu (nie gwarancja pomyślnego stanu binariów). Kontrolę rzeczywistej wersji / poprawności LP trzeba wykonać przed `CreateFarm`.
+`<folder_skryptów>\reports\LocalAudit.html` to zbiorczy wynik tylko z bieżącego hosta: role/funkcje, OS, domena, nośniki, SharePoint, alias, lokalny stan instalacji. Nie agreguje danych z innych serwerów. Część `state.json` w `%ProgramData%\SPSE-Automation` to znaczniki procesu (nie gwarancja pomyślnego stanu binariów). Kontrolę rzeczywistej wersji / poprawności LP trzeba wykonać przed `CreateFarm`.
 
 ## Ograniczenia i ryzyka
 
@@ -91,3 +91,21 @@ Tworzenie farmy zakłada nowe DB `SPSE_Config` i `SPSE_AdminContent` na `SPSEDB`
 - Nie zmieniono zakresu uprawnień ani kroków modyfikujących; nadal wymagane jest oddzielne potwierdzenie każdej instalacji.
 
 Po rozpakowaniu archiwum pobranego z GitHub (po weryfikacji źródła) można wykonać `Get-ChildItem .\*.ps1 | Unblock-File`, jeśli system blokuje niepodpisane skrypty po pobraniu. Nie wyłączaj polityki skryptów systemowo.
+
+## Aktualizacja v0.3.2 — ścieżki wybierane podczas wykonania
+
+- **Prerequisites** i **InstallCore**: podaj pełną lokalną ścieżkę do obrazu angielskiego SharePoint SE ISO, np. `E:\install\SW_DVD5_...iso`.
+- **InstallPolishLP**: podaj pełną lokalną ścieżkę do polskiego ISO (np. `D:\Media\ServerLanguagePack.iso`).
+- **InstallCU**: podaj pełną lokalną ścieżkę do pliku `.exe` aktualizacji. Weryfikacja SHA256 i podpisu pozostaje obowiązkowa.
+- **WindowsFeatures**: gdy brakuje funkcji, skrypt pyta opcjonalnie o lokalny folder źródła Windows, np. `D:\sources\sxs` (Enter = bez podanego źródła).
+- **Audit** nie zadaje pytań o nośniki; raport zapisuje w podfolderze `reports` katalogu skryptu.
+- Nie zapisujemy wybranych ścieżek w `config.json`, `state.json` ani repozytorium. Za każdym razem wskazujesz je ręcznie. Akceptowane są tylko istniejące pliki/katalogi na lokalnych dyskach stałych. Ścieżki UNC i mapowane dyski sieciowe są zabronione.
+- Wciśnięcie Enter przy wymaganym pliku anuluje etap **bez uruchomienia instalatora**.
+
+Przykład uruchomienia `Prerequisites`:
+
+```powershell
+.\SPSEAPP1.ps1 -Step Prerequisites
+# W odpowiedzi na pytanie wpisz: E:\install\obraz_sharepoint.iso
+# Potwierdzenie instalacji jest nadal oddzielnym krokiem.
+```
