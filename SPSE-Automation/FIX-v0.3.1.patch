@@ -1,0 +1,65 @@
+--- a/spse-automation/Common.ps1
++++ b/spse-automation/Common.ps1
+@@ -24,7 +24,8 @@
+     if ([int]$c.SqlPort -lt 1 -or [int]$c.SqlPort -gt 65535) { throw 'Nieprawidlowy port SQL.' }
+     if ([int]$c.CentralAdminPort -lt 1 -or [int]$c.CentralAdminPort -gt 65535) { throw 'Nieprawidlowy port CA.' }
+     if ($c.CentralAdminAuth -notin @('NTLM','Kerberos')) { throw 'CentralAdminAuth: NTLM lub Kerberos.' }
+-    if ($c.Servers.PSObject.Properties.Count -ne 4) { throw 'Wymagane sa dokladnie 4 serwery SPSE.' }
++    $serverNames = @($c.Servers.PSObject.Properties | ForEach-Object { $_.Name })
++    if ($serverNames.Length -ne 4) { throw 'Wymagane sa dokladnie 4 serwery SPSE.' }
+     $allowed = @('ApplicationWithSearch','WebFrontEndWithDistributedCache')
+     foreach ($s in $c.Servers.PSObject.Properties) {
+         if ($s.Value -notin $allowed) { throw "Niepoprawna MinRole dla $($s.Name): $($s.Value)" }
+@@ -76,7 +77,13 @@
+         if (Test-Path $key) { return $true }
+     }
+     $sessionMgr = Get-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager' -ErrorAction SilentlyContinue
+-    if ($sessionMgr -and $null -ne $sessionMgr.PendingFileRenameOperations) { return $true }
++    # PendingFileRenameOperations is an OPTIONAL registry value. StrictMode forbids direct access when absent.
++    if ($sessionMgr) {
++        $pendingProp = $sessionMgr.PSObject.Properties['PendingFileRenameOperations']
++        if ($null -ne $pendingProp -and $null -ne $pendingProp.Value -and @($pendingProp.Value).Length -gt 0) {
++            return $true
++        }
++    }
+     return $false
+ }
+ function Get-SharePointPresent {
+--- a/spse-automation/Invoke-SPSELocal.ps1
++++ b/spse-automation/Invoke-SPSELocal.ps1
+@@ -1,4 +1,4 @@
+-﻿# SPSE Automation v0.3 LOCAL-ONLY. Brak PowerShell Remoting i operacji na innych VM.
++﻿# SPSE Automation v0.3.1 LOCAL-ONLY. Brak PowerShell Remoting i operacji na innych VM.
+ param(
+     [Parameter(Mandatory)][ValidateSet('SPSEAPP1','SPSEAPP2','SPSEWFE1','SPSEWFE2')][string]$ExpectedHost,
+     [ValidateSet('Audit','WindowsFeatures','SqlAlias','Prerequisites','InstallCore','InstallPolishLP','InstallCU','CreateFarm','JoinFarm','AuditFarm')]
+@@ -16,7 +16,7 @@
+ # Folder raportu tworzymy dopiero po walidacji hosta.
+ New-Item -ItemType Directory -Path $reports -Force | Out-Null
+ $server=$env:COMPUTERNAME
+-Write-Host "SPSE v0.3 / LOCAL ONLY | $server | $Step | $role" -ForegroundColor Cyan
++Write-Host "SPSE v0.3.1 / LOCAL ONLY | $server | $Step | $role" -ForegroundColor Cyan
+ 
+ function Get-AuditInfo {
+     $os=Get-CimInstance Win32_OperatingSystem
+@@ -30,6 +30,11 @@
+     })
+     $vc=$null
+     try { $vc=Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64' -ErrorAction Stop } catch {}
++    $vcInstalled=$false
++    if ($vc) {
++        $vcInstalledProperty=$vc.PSObject.Properties['Installed']
++        if ($null -ne $vcInstalledProperty) { $vcInstalled=([int]$vcInstalledProperty.Value -eq 1) }
++    }
+     $release=0
+     try { $release=[int](Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full' -Name Release -ErrorAction Stop).Release } catch {}
+     $aliasKey='HKLM:\SOFTWARE\Microsoft\MSSQLServer\Client\ConnectTo'
+@@ -44,7 +49,7 @@
+         Server=$server; Step='Audit'; Time=(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+         Role=$role; OS=$os.Caption; Domain=$computer.Domain; DomainJoined=$computer.PartOfDomain
+         InstalledWindowsFeatures=$features.Count-$missing.Count; RequiredWindowsFeatures=$features.Count
+-        MissingFeatures=($missing -join ', '); DotNetRelease=$release; VCRedist=([bool]($vc -and $vc.Installed -eq 1))
++        MissingFeatures=($missing -join ', '); DotNetRelease=$release; VCRedist=$vcInstalled
+         SharePointPresent=(Get-SharePointPresent); SharePointFileVersion=$build
+         PendingReboot=(Test-RebootPending); LocalDiskE=([bool]$disk)
+         SqlTarget=$c.SqlTarget; SqlPort=$c.SqlPort; SqlAlias=$c.SqlAlias; SqlAliasRegistry=$aliasValue
