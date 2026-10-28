@@ -1,34 +1,33 @@
-# SharePoint SE — instalacja lokalna (v0.3)
+# SharePoint SE — instalacja lokalna
 
-Pakiet instalacyjny dla farmy SharePoint Server Subscription Edition: SPSEAPP1, SPSEAPP2, SPSEWFE1, SPSEWFE2, z istniejącym serwerem SQL SPSEDB (TCP 1433).
+Środowisko: `SPSEAPP1`, `SPSEAPP2`, `SPSEWFE1`, `SPSEWFE2`; SQL `SPSEDB:1433`.
 
-**[Pobierz pakiet ZIP](SPSE_Automation_v03_Local.zip)** — zawiera dziewięć plików: cztery skrypty startowe, moduły Common.ps1, Invoke-SPSELocal.ps1, LocalFarm.ps1, config.json i szczegółową instrukcję README.md.
+## Ważna poprawka 28.10.2026
+
+**Archiwum `SPSE_Automation_v03_Local.zip` zawiera błąd audytu!** W Windows PowerShell 5.1 przy `Set-StrictMode -Version Latest` może pojawić się komunikat `The property 'Count' cannot be found on this object`. Nie używaj tego archiwum bez poprawki.
+
+- [Poprawka kodu do wersji v0.3.1](FIX-v0.3.1.patch) — usuwa błąd `.PSObject.Properties.Count` i zabezpiecza dwa opcjonalne odczyty rejestru.
+- Pełne poprawione archiwum **SPSE_Automation_v03_1_Local.zip** zostało przekazane w rozmowie ChatGPT 28.10.2026. W repozytorium na razie przechowywana jest oryginalna wersja v0.3 i poprawka w pliku `.patch`.
 
 ## Zasady bezpieczeństwa
 
-- Uruchamianie osobno **lokalnie** na każdej maszynie, z blokadą nazwy hosta.
-- Bez WinRM, Invoke-Command, zdalnej dystrybucji i automatycznego kopiowania nośników.
-- Domyślna czynność: **Audit** (odczyt systemu i lokalny raport).
-- Instalacja funkcji systemowych i SharePoint wymaga osobnego kroku i potwierdzenia.
-- Tworzenie farmy i dołączanie serwerów zmienia konfigurację na **SPSEDB** — wykonuj wyłącznie po analizie i autoryzacji.
-- Obrazy ISO, CU, hasła i klucze produktu nie są publikowane w repozytorium.
-- Repozytorium jest publiczne: nie commituj raportów ani plików zawierających dane firmowe.
+- Skrypty działają tylko **lokalnie**, na serwerze o nazwie przypisanej do pliku uruchomieniowego.
+- Bez PowerShell Remoting, kopiowania plików przez sieć i centralnego wykonania.
+- Domyślna czynność `Audit` nie instaluje funkcji Windows ani SharePoint.
+- Nośniki ISO, klucz licencyjny, hasła i raporty infrastruktury nie trafiają do publicznego repozytorium.
+- Instalację i testy wykonuje operator na jednej VM naraz; bez CI na GitHubie.
 
-## Pierwszy krok
+## Uruchomienie audytu
 
-Skopiuj archiwum i instalatory ręcznie na wybrany serwer, rozpakuj skrypty do `E:\install\spse-automation`, a następnie na **SPSEAPP1** uruchom w Windows PowerShell 5.1 x64 jako administrator:
+Po pobraniu **poprawionej wersji v0.3.1** i rozpakowaniu jej na `SPSEAPP1`:
 
 ```powershell
-cd E:\install\spse-automation
+cd C:\temp\SPSE_Automation_v03_1_Local\spse-automation
 .\SPSEAPP1.ps1 -Step Audit
 ```
 
-Raport: `E:\install\spse-automation\reports\LocalAudit.html`.
+Jeżeli system blokuje niepodpisane skrypty pobrane z Internetu, po zweryfikowaniu źródła można usunąć znacznik pobrania z konkretnych plików przez `Get-ChildItem -Filter *.ps1 | Unblock-File`. Nie zmieniaj systemowo Execution Policy.
 
-Na pozostałych serwerach użyj odpowiednio `SPSEAPP2.ps1`, `SPSEWFE1.ps1` i `SPSEWFE2.ps1`.
+Raport: lokalny `reports\LocalAudit.html`. Nie uruchamiaj kolejnych etapów bez jego oceny.
 
-**Uwaga:** pakiet przeszedł kontrolę statyczną, lecz nie został przetestowany na Windows Server 2025. Przed wykonaniem kroków modyfikujących przeanalizuj raport Audit i instrukcję dołączoną do ZIP.
-
-SHA256 archiwum: `071d6670436e3588588e4561a338c667e66d510e13da03157bcc9c553bf5c62d`.
-
-Bez CI / GitHub Actions. Instalacja i testy odbywają się lokalnie, a GitHub służy tylko do przechowywania wersji.
+Więcej informacji: pełne `README.md` znajduje się w archiwum ZIP.
