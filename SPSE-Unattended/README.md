@@ -1,4 +1,4 @@
-# SPSE — automatyczna instalacja lokalna EN + PL + KB5002927 (v1.0)
+# SPSE — automatyczna instalacja lokalna EN + PL + KB5002927 (v1.1)
 
 **Cel:** instalacja *samych binariów* SharePoint Server Subscription Edition na **SPSEAPP2, SPSEWFE1, SPSEWFE2** na Windows Server 2025. Skrypt celowo **odmawia działania na SPSEAPP1 i SPSEDB**.
 
@@ -8,6 +8,22 @@
 2. Skopiuj **osobno na każdy serwer**, na lokalny dysk, cztery pliki: `OfficeServer.iso` (EN), `ServerLanguagePack.iso` (PL), `uber-subscription-kb5002927-fullfile-x64-glb.exe` i `vc_redist.x64.exe`. Domyślna lokalizacja: `E:\install`. Internet/Windows Update może być wymagany przez Microsoft Prerequisite Installer; obecność tych czterech plików nie gwarantuje pełnego trybu offline. Pliki ISO mają zostać na stałych dyskach lokalnych, nie na SMB.
 3. Na **SPSEAPP2** wcześniej dodaj dysk **S: 200 GB, NTFS** z wystarczającą ilością wolnej przestrzeni. Skrypt ustawi `DATADIR=S:\SearchIndex` przy instalacji. Na `SPSEWFE1/WFE2` oddzielny Search dysk nie jest wymagany.
 4. Uruchom **Windows PowerShell 5.1 x64 jako administrator** w katalogu skryptu.
+
+## Poprawka v1.1 — SPSEAPP2, 29.10.2026
+
+- Usunięto konflikt z automatyczną zmienną PowerShell `$args` w funkcji `Invoke-Exe` i w wywołaniu `Prerequisites`.
+- Dodano jawny warunek, aby nie uruchamiać instalatora z pustą listą parametrów.
+- **Wznowienie v1.0 po błędzie `ArgumentList` działa bez kasowania `progress.json`**: zerowany jest błędny znacznik `PrereqStarted`, dzięki czemu Microsoft Prerequisite Installer ruszy z `/unattended`, a nie `/continue`.
+- Przy błędzie instalacji bazowego SharePoint zachowany zostanie zaszyfrowany klucz DPAPI do bezpiecznego ponowienia; jawny, tymczasowy XML nadal jest usuwany po wyjściu z instalatora.
+- Konta, baza SQL i farmy nie są modyfikowane; dotychczas zakończone etapy Windows/VC/SQL pozostają oznaczone jako wykonane.
+
+**Po błędzie z v1.0:** podmień skrypt lub rozpakuj nową paczkę i uruchom na `SPSEAPP2`:
+
+```powershell
+.\Install-SPSE-Unattended.ps1 -Resume -AcceptLicenseTerms
+```
+
+Nie uruchamiaj skryptu od nowa bez `-Resume`, nie kasuj plików w `C:\ProgramData\SPSE-Unattended\SPSEAPP2`.
 
 ## Start — tylko jeden serwer na raz
 

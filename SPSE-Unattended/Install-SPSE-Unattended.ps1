@@ -1,6 +1,6 @@
 #requires -Version 5.1
 <#
- SPSE unattended binaries-only installer v1.0 (2026-10-29).
+ SPSE unattended binaries-only installer v1.1 (2026-10-29).
  ONLY SPSEAPP2 / SPSEWFE1 / SPSEWFE2, local execution, manual restarts.
  Does NOT create/join/configure a farm. No remoting, no SQL writes.
 #>
@@ -163,9 +163,17 @@ function With-Iso([string]$File,[scriptblock]$Action) {
     if ($owned) { Dismount-DiskImage -ImagePath $File -ErrorAction SilentlyContinue | Out-Null }
   }
 }
-function Invoke-Exe([string]$Exe,[string]$Args) {
+function Invoke-Exe {
+  param(
+    [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string]$Exe,
+    [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string]$ArgumentLine
+  )
+  # Nie stosuj nazwy $Args: $args jest automatyczna zmienna PowerShell,
+  # przez ktora v1.0 wywolywal Start-Process z pustym -ArgumentList.
+  if ([string]::IsNullOrWhiteSpace($ArgumentLine)) { throw 'Puste parametry instalatora; przerwano bez uruchomienia EXE.' }
+  if (-not (Test-Path -LiteralPath $Exe -PathType Leaf)) { throw "Brak pliku instalatora: $Exe" }
   Write-Info "Instalator: $([IO.Path]::GetFileName($Exe)); parametry trybu cichego, bez kluczy i hasel."
-  $p=Start-Process -FilePath $Exe -ArgumentList $Args -PassThru -Wait -ErrorAction Stop
+  $p=Start-Process -FilePath $Exe -ArgumentList $ArgumentLine -PassThru -Wait -ErrorAction Stop
   Write-Info "Kod zakonczenia: $($p.ExitCode)"
   if ([int]$p.ExitCode -notin @(0,3010,1641)) { throw "Instalator zakonczyl sie kodem $($p.ExitCode). Nie kontynuowano." }
   return [int]$p.ExitCode
@@ -278,10 +286,10 @@ function Do-Prerequisites($cfg,$s) {
   With-Iso $cfg.CoreIso {
     param($drive)
     $pr=Join-Path $drive 'prerequisiteinstaller.exe'
-    $args=if ($s.PrereqStarted) {'/continue /unattended'} else {'/unattended'}
+    $commandLine=if ($s.PrereqStarted) {'/continue /unattended'} else {'/unattended'}
     $s.PrereqStarted=$true
     Save-State $s
-    $code=Invoke-Exe $pr $args
+    $code=Invoke-Exe $pr $commandLine
     if ($code -eq 0 -and -not (Get-PendingReboot)) {
       $s.PrereqStarted=$false
       Mark-Complete $s 'Prerequisites'
@@ -328,7 +336,10 @@ function Do-Core($cfg,$s) {
   finally {
     $key=$null
     Remove-Item -LiteralPath $tempConfig -Force -ErrorAction SilentlyContinue
-    Remove-Item -LiteralPath $KeyFile -Force -ErrorAction SilentlyContinue
+    # v1.0 usuwala klucz po dowolnym bledzie Setup. Zachowaj DPAPI na retry.
+    if (Is-Complete $s 'InstallCore') {
+      Remove-Item -LiteralPath $KeyFile -Force -ErrorAction SilentlyContinue
+    }
   }
 }
 function Do-Language($cfg,$s) {
@@ -371,7 +382,7 @@ try {
   }
   if (-not $Resume) {
     if (Test-Path -LiteralPath $StateFile) { throw 'Istnieje stan poprzedniej proby. Uzyj -Resume; nie wykonuj swiezej instalacji.' }
-    Write-Host "=== SPSE UNATTENDED v1.0 | $HostName | BEZ tworzenia farmy ===" -ForegroundColor Green
+    Write-Host "=== SPSE UNATTENDED v1.1 | $HostName | BEZ tworzenia farmy ===" -ForegroundColor Green
     Write-Host 'Przed uruchomieniem sprawdz snapshot VM, uprawnienia i dostep do Microsoft Update.'
     $media=Read-Host 'Lokalny katalog nośników [E:\install]'
     if ([string]::IsNullOrWhiteSpace($media)) { $media='E:\install' }
@@ -417,6 +428,15 @@ try {
     $state=Read-State
     $cfg=Get-Content -LiteralPath $ConfigFile -Raw | ConvertFrom-Json
     if (-not $AcceptLicenseTerms) { throw 'Przy wznowieniu wymagane -AcceptLicenseTerms.' }
+    # Migracja blednego znacznika z v1.0: Start-Process nie uruchomil niczego.
+    # Nie kasuj stanu, nie powtarzaj WindowsFeatures / SqlAlias, nie uzywaj /continue.
+    if ($state.PrereqStarted -and -not (Is-Complete $state 'Prerequisites') -and
+        $state.LastError -match '(?i)ArgumentList') {
+      Write-Warning 'Odzysk v1.0: wyzerowano PrereqStarted po pustym ArgumentList (instalator Microsoft NIE wystartowal).'
+      $state.PrereqStarted=$false
+      $state.LastError=''
+      Save-State $state
+    }
     if ($state.PauseBoot) {
       if ($state.PauseBoot -eq (Get-BootStamp)) { throw "Najpierw uruchom ponownie serwer: $($state.PauseReason)" }
       $state.PauseBoot='';$state.PauseReason=''
