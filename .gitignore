@@ -1,40 +1,23 @@
-# Nigdy nie publikuj wyników inwentaryzacji produkcyjnej
-SP2019_Audit_*/
-SP2019_Audit_*.zip
-**/SQLInventory.json
-**/MergeStatus.txt
-**/SPSE_Readiness_Report_MERGED.html
-**/SP_Audit_SHAREABLE_MERGED.md
-**/SP_Audit_SHAREABLE_*.md
-**/Audit_for_review.md
-**/FullInventory.json
-**/AuditMetadata.json
-**/AuditStatus.txt
-**/SPSE_Readiness_Report.html
-**/CollectionErrors.csv
-**/MigrationRisks.csv
-*.csv
-*.zip
+# Pliki tymczasowe i logi
+*.tmp
+*.temp
+*.bak
+*.swp
+*.log
+~$*
 
-# Dane dostępowe i certyfikaty prywatne
+# Dane lokalne i poufne
 .env
 .env.*
+!.env.example
+*secret*
+*credential*
 *.pfx
 *.p12
 *.pem
 *.key
-*secrets*.json
-*credentials*.json
 
-# Tymczasowe
-*.tmp
-*.log
+# Pliki systemowe i edytorów
 Thumbs.db
 .DS_Store
 .vscode/
-
-# SharePoint workflow migration outputs
-**/WorkflowDefinitions_PRIVATE.json
-**/WorkflowMigration_Dashboard.html
-**/WorkflowMigration_SHAREABLE.md
-**/WorkflowDefinitions_*/
